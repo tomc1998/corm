@@ -1,6 +1,6 @@
 (defpackage :corm/main/main (:use :cl :prove))
 
-(prove:plan 3)
+(prove:plan 16)
 
 ;; Test whether defentity works as expected
 (defentity test-entity
@@ -39,4 +39,13 @@
 (prove:is (slot-to-column-def '(id "BIGINT UNSIGNED" :primary :auto-increment))
           "id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT")
 
+;; Test override def
+(defentity test-entity
+    ((id "BIGINT UNSIGNED" :primary :auto-increment)
+     (email "VARCHAR(1024)" :not-null)) T)
+(prove:ok (make-instance 'test-entity :id 345 :email "a@a.a"))
+(prove:is (slot-value (make-instance 'test-entity :id 345 :email "a@a.a") 'email) "a@a.a")
+
 (prove:finalize)
+
+

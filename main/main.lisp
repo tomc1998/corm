@@ -1,3 +1,6 @@
+;; Connect to DB
+(defvar *db* (dbi:connect :mysql :database-name "test" :username "root" :password ""))
+
 (defun kebab-to-snake-case (name)
   "Convert the string from a string separated with '-' to a string separated with '_'"
   (reduce (lambda (&optional s0 s1) (concatenate 'string (string s0) (string s1)))
@@ -30,7 +33,9 @@
                (reduce (lambda (&optional s0 s1) (concatenate 'string s0 " " s1))
                        (loop for m in (cdr (cdr s)) collect (sql-mod-from-keyword m)))))
 
-(defmacro defentity (name slots)
+(define-condition entity-already-exists (condition) ())
+
+(defmacro defentity (name slots &optional override)
   "Define an entity with the given name. This macro creates a class with the
   entity of that name, and creates the appropriate corresponding persistence
   storage. You can create a new entity with the make-<name> function.
@@ -47,7 +52,11 @@
       ((id \"BIGINT UNSIGNED\" :primary :auto-increment)
       (first-name \"VARCHAR (256)\" :not-null)
       (last-name \"VARCHAR (256)\" :not-null)
-      ))"
+      ))
+
+  An optional 'override' argument can be set to T to drop the SQL table before
+  re-creating it."
+
 
   ;; First, loop & extract out the column definitions from the slots, and also
   ;; the slot names.
@@ -57,14 +66,20 @@
           "CREATE TABLE IF NOT EXISTS "
           (kebab-to-snake-case (string name))
           " ("
-          (reduce (lambda (s0 s1) (format nil"~a,~%~a" s0 s1))
+          (reduce (lambda (s0 s1) (format nil "~a,~%~a" s0 s1))
                   (loop for s in slots collect (slot-to-column-def s)))
           ");"))
         (slot-names (loop for s in slots collect
                          `(,(car s) :initarg
                             ,(intern (string (car s)) :keyword)))))
     (print sql-def)
-    `(defclass
-           ,name () ,slot-names)
+    `(progn
+       (if ,override (dbi:execute (dbi:prepare *db* (concatenate
+                                                     'string "DROP TABLE IF EXISTS "
+                                                     ,(kebab-to-snake-case (string name))))))
+       (handler-case (dbi:execute (dbi:prepare *db* ,sql-def))
+         (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
+                        (error 'entity-already-exists) (error e))))
+       (defclass ,name () ,slot-names))
     ))
 

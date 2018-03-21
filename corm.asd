@@ -3,6 +3,7 @@
   :version "0.0.1"
   :author "Tom <thomascheng1998@gmail.com>"
   :licence "Public Domain"
+  :depends-on (:cl-dbi)
   :components ((:file "main/main"))
   )
 
