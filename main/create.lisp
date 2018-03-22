@@ -4,7 +4,6 @@
   passthrough function, and returns the input."
   (cond
     ((typep s 'string) s)
-    ((eq s :primary) "PRIMARY KEY")
     ((eq s :default) "DEFAULT")
     ((eq s :not-null) "NOT NULL")
     ((eq s :auto-increment) "AUTO_INCREMENT")))
@@ -22,7 +21,7 @@
 
 (define-condition entity-already-exists (condition) ())
 
-(defmacro defentity (name slots &optional override)
+(defmacro defentity (name slots parents &optional override)
   "Define an entity with the given name. This macro creates a class with the
   entity of that name, and creates the appropriate corresponding persistence
   storage. You can create a new entity with the make-<name> function.
@@ -32,18 +31,40 @@
   database storage, and the following items being data regarding other storage
   modifiers.
 
+  A list of parent entities & names for these can be given to create a
+  many-to-one relationship between this entity and the given entities. For
+  example, one may have a 'user' entity to represent users on a website. Users
+  might be able to create posts, which are amalgamated into a central newsfeed.
+  There would therefore be a many-to-one relationship between posts and users -
+  users would 'own' many posts. Therefore, when defining the post entity, one
+  would specify the user entity as a parent.
+  This list is given as a plist, with the keyword being the alias for the
+  relationship. In the above example, one may want to alias the post - user
+  relationship as 'author', as the post is authored by a given user. You would
+  then pass (:author user) as the parent list. This will then generate a
+  corresponding SQL table column called 'parent_author_id', and can also be
+  referenced in complex select queries.
+
+  An autoincrement ID is automatically added to table definitions.
+
   Example usage:
 
   ;; Define a user entity
   (defentity user
-      ((id \"BIGINT UNSIGNED\" :primary :auto-increment)
-      (first-name \"VARCHAR (256)\" :not-null)
-      (last-name \"VARCHAR (256)\" :not-null)
-      ))
+      ;; Slots
+      ((first-name \"VARCHAR (256)\" :not-null)
+      (last-name \"VARCHAR (256)\" :not-null))
+      ;; Parents (none)
+      ())
+  ;; Define a child 'post' entity
+  (defentity post
+      ;; Slots
+      (body \"VARCHAR (2048)\" :not-null)
+      ;; Parents
+      (:author user))
 
   An optional 'override' argument can be set to T to drop the SQL table before
   re-creating it."
-
 
   ;; First, loop & extract out the column definitions from the slots, and also
   ;; the slot names.
@@ -53,8 +74,11 @@
           "CREATE TABLE IF NOT EXISTS "
           (kebab-to-snake-case (string name))
           " ("
+          (format nil "~{parent_~a_id BIGINT UNSIGNED~^,~%~*~}"
+                  (mapcar (lambda (s) (kebab-to-snake-case (string s))) parents))
           (reduce (lambda (s0 s1) (format nil "~a,~%~a" s0 s1))
-                  (loop for s in slots collect (slot-to-column-def s)))
+                  (cons "id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT"
+                        (loop for s in slots collect (slot-to-column-def s))))
           ");"))
         (slot-names (loop for s in slots collect
                          `(,(car s) :initform NIL :initarg
@@ -66,5 +90,10 @@
        (handler-case (dbi:execute (dbi:prepare *db* ,sql-def))
          (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
                         (error 'entity-already-exists) (error e))))
-       (defclass ,name () ,slot-names))
+       (defclass ,name () ,(append
+                            (loop for (k v) on parents by #'cddr collect
+                                 (list (intern (format nil "PARENT-~a-ID" (string-upcase k)))
+                                       :initarg k :initform NIL))
+                            (list '(id :initarg :id :initform NIL))
+                            slot-names)))
     ))

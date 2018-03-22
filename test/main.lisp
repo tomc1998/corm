@@ -1,6 +1,6 @@
 (defpackage :corm/main/main (:use :cl :prove))
 
-(setf prove:*default-reporter* :fiveam)
+(setf prove:*default-reporter* :dot)
 
 (defun name-case-transform-tests ()
   (prove:plan 4)
@@ -16,8 +16,7 @@
   )
 
 (defun sql-mod-from-keyword-tests ()
-  (prove:plan 5)
-  (prove:is (sql-mod-from-keyword :primary) "PRIMARY KEY")
+  (prove:plan 4)
   (prove:is (sql-mod-from-keyword :default) "DEFAULT")
   (prove:is (sql-mod-from-keyword :not-null) "NOT NULL")
   (prove:is (sql-mod-from-keyword :auto-increment) "AUTO_INCREMENT")
@@ -27,44 +26,43 @@
 
 (defun column-def-tests ()
   (prove:plan 1)
-  (prove:is (slot-to-column-def '(id "BIGINT UNSIGNED" :primary :auto-increment))
-            "id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT")
+  (prove:is (slot-to-column-def '(email "VARCHAR(256)" :not-null))
+            "email VARCHAR(256) NOT NULL")
   (prove:finalize)
   )
 
 (defun defentity-tests ()
-  (prove:plan 6)
+  (prove:plan 5)
 
   ;; Test whether defentity works as expected
   (defentity test-entity
-      ((id "BIGINT UNSIGNED" :primary :auto-increment)
-       (name "VARCHAR(256)" :not-null)))
-  (let ((instance (make-instance 'test-entity :id 123 :name "Tom")))
+      ((name "VARCHAR(256)" :not-null)) () T)
+  (let ((instance (make-instance 'test-entity :name "Tom")))
     (prove:ok instance
               "Test entity structure should have a defined constructor")
-    (prove:is (slot-value instance 'id) 123
-              "Slot 'id should be initialised properly through initargs")
     (prove:is (slot-value instance 'name) "Tom"
               "Slot 'name should be initialised properly through initargs")
-    (setf (slot-value instance 'id) 234)
-    (prove:is (slot-value instance 'id) 234
-              "Slot 'id should be changed when using setf")
-    )
+    (setf (slot-value instance 'name) "Joe")
+    (prove:is (slot-value instance 'name) "Joe"
+              "Slot 'name should be changed when using setf"))
 
   ;; Test override def
   (defentity test-entity
-      ((id "BIGINT UNSIGNED" :primary :auto-increment)
-       (email "VARCHAR(1024)" :not-null)) T)
-  (prove:ok (make-instance 'test-entity :id 345 :email "a@a.a"))
-  (prove:is (slot-value (make-instance 'test-entity :id 345 :email "a@a.a") 'email) "a@a.a")
+      ((email "VARCHAR(1024)" :not-null)) () T)
+  (prove:ok (make-instance 'test-entity :email "a@a.a"))
+  (prove:is (slot-value (make-instance 'test-entity :email "a@a.a") 'email) "a@a.a")
+
+  ;; Test defentity child
+  (defentity test-entity-child
+      ((some-data "VARCHAR(2048)" :not-null)) (:owner test-entity) T)
 
   (prove:finalize))
 
 (defun insert-one-tests ()
   (prove:plan 2)
-  (prove:is 1 (insert-one (make-instance 'test-entity :email "a@a.a"))
+  (prove:is (insert-one (make-instance 'test-entity :email "a@a.a")) 1
             "Inserting should return the proper auto-insert ID")
-  (prove:is 1 (insert-one (make-instance 'test-entity :id 123 :email "a@a.a"))
+  (prove:is (insert-one (make-instance 'test-entity :id 234 :email "a@a.a")) 1
             "Inserting should return the old value of last insert ID if the ID
             of the entity was specified")
   (prove:finalize)
