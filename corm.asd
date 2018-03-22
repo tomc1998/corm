@@ -18,7 +18,8 @@
 (asdf:defsystem tests
   :depends-on (:corm :prove)
   :defsystem-depends-on (:prove-asdf)
-  :components ((:test-file "test/main"))
+  :components ((:test-file "test/main")
+               (:test-file "test/select"))
   )
 
 (ql:quickload :prove)

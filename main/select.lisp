@@ -32,3 +32,42 @@
             ;; Make instance from initargs
             collect (apply #'make-instance
                            (append (list ',e) (init-args-from-row ,slots row))))))))
+
+(defun build-visit-list-from-select-tree (tree)
+  "Used by the select tree function to build a list of references to all the
+nodes in the tree."
+  (loop for node in tree
+     if (typep node 'list)
+     append (build-visit-list-from-select-tree node)
+     else collect node))
+
+(defmacro select-tree (tree)
+  "Selects the tree of entities, and returns a tree in the same shape with the
+  results. Each node of the input tree is the name of an entity, followed by a
+  list of child nodes which are joined in a many to one relationship with the
+  parent. For example, given the example of fetching all the posts made by a
+  user, and all the comments on those posts:
+
+  (select-tree (user (post (comment ()))))
+
+  This would return a list of output nodes. Each output node is a list where the
+  first element contains an entity instance, and the 2nd element is a list of
+  child nodes. An example output for the above input would be:
+
+  ((<user object>
+    ((<post object>
+      ((<comment object> ()))))
+    ((<post object> ())))
+  (<user object> ()))
+
+  This represents 2 users, one who owns 2 posts (one of which has 1 comment),
+  and another user with no posts."
+
+  ;; First, we need to generate the query string. We'll alias the column results
+  ;; with a number based on their position in a deterministic traversal of the
+  ;; tree. We can then traverse the tree, and use a generic function to parse
+  ;; all the results out using the prefix as a namespace to make sure things
+  ;; don't clash.
+
+
+  )
