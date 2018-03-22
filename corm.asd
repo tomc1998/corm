@@ -4,8 +4,13 @@
   :author "Tom <thomascheng1998@gmail.com>"
   :licence "Public Domain"
   :depends-on (:cl-dbi)
-  :components ((:file "main/main"))
-  )
+  :components (
+               (:file "main/db")
+               (:file "main/create" :depends-on ("main/db"))
+               (:file "main/insert" :depends-on ("main/db"))
+               (:file "main/main" :depends-on ("main/db"
+                                               "main/create"
+                                               "main/insert"))))
 
 ;; Testing ASDF system
 (asdf:defsystem tests

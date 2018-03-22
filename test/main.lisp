@@ -1,5 +1,7 @@
 (defpackage :corm/main/main (:use :cl :prove))
 
+(setf prove:*default-reporter* :fiveam)
+
 (defun name-case-transform-tests ()
   (prove:plan 4)
   (prove:is (kebab-to-snake-case "my-lisp-name") "my_lisp_name"
