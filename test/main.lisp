@@ -71,13 +71,14 @@
   )
 
 (defun select-all-tests ()
-  (prove:plan 3)
+  (prove:plan 4)
   (prove:is
    (init-args-from-row (id email) (list :row-id 123 :row-email "asd"))
    (list :id 123 :email "asd"))
-  (let ((entity (nth 0(select-all test-entity))))
+  (let ((entity (nth 0 (select-all test-entity))))
     (prove:is (slot-value entity 'id) 1)
     (prove:is (slot-value entity 'email) "a@a.a"))
+  (prove:is (length (select-all test-entity)) 2)
   (prove:finalize))
 
 (name-case-transform-tests)
