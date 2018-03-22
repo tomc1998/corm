@@ -7,9 +7,11 @@
   :components (
                (:file "main/db")
                (:file "main/create" :depends-on ("main/db"))
+               (:file "main/select" :depends-on ("main/db"))
                (:file "main/insert" :depends-on ("main/db"))
                (:file "main/main" :depends-on ("main/db"
                                                "main/create"
+                                               "main/select"
                                                "main/insert"))))
 
 ;; Testing ASDF system
