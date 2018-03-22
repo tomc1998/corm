@@ -5,7 +5,17 @@
 
   Returns the value of LAST_INSERT_ID(). This will be the previous value of
   last_insert_id() if the ID is specified in the entity (i.e. the Autoincrement
-  value wasn't used), or the value of the ID if autoincrement is used."
+  value wasn't used), or the value of the ID if autoincrement is used.
+
+  Usage:
+
+  ;; Define entity called test-entity...
+  (defentity test-entity
+      ((id \"BIGINT UNSIGNED\" :primary :auto-increment)
+       (email \"VARCHAR(1024)\" :not-null)) T)
+  ;; Insert an entity. The email of the entity will be \"a@a.a\", and the ID
+  ;; will be auto-generated.
+  (insert-one (make-entity :email \"a@a.a\"))"
 
   ;; First, get all the entity's slots as SQL column names. Skip nil values
   (let ((slots (remove-if (lambda (a)  (eq (slot-value e a) nil))
@@ -22,5 +32,4 @@
         (apply #'dbi:execute (append (list (dbi:prepare *db* query)) params))
         ;; Get the last insert ID
         (nth 1 (dbi:fetch (dbi:execute
-                           (dbi:prepare *db* "SELECT LAST_INSERT_ID()"))))
-        ))))
+                           (dbi:prepare *db* "SELECT LAST_INSERT_ID()"))))))))

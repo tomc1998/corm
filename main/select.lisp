@@ -6,9 +6,20 @@
       append (list (intern (string s) :keyword) v)))
 
 (defmacro select-all (e)
-  "Select all entities of the given type"
+  "Select all entities of the given type. Usage:
 
-  ;; Get slots of e & the table namt
+  ;; Define entity called test-entity...
+  (defentity test-entity
+      ((id \"BIGINT UNSIGNED\" :primary :auto-increment)
+       (email \"VARCHAR(1024)\" :not-null)) T)
+  ;; Insert some entities
+  (insert-one (make-entity :email \"a@mail.com\"))
+  (insert-one (make-entity :email \"b@mail.com\"))
+  (insert-one (make-entity :email \"c@mail.com\"))
+  ;; Select all inserted test-entity entities, print their emails
+  (loop for e in (select-all test-entity) do (print (slot-value e 'email)))"
+
+  ;; Get slots of e & the table name
   (let ((slots (mapcar #'sb-mop:slot-definition-name
                        (sb-mop:class-direct-slots (class-of (make-instance e)))))
         (table-name (kebab-to-snake-case (string e))))
