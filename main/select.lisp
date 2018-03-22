@@ -35,11 +35,13 @@
 
 (defun build-visit-list-from-select-tree (tree)
   "Used by the select tree function to build a list of references to all the
-nodes in the tree."
-  (loop for node in tree
-     if (typep node 'list)
-     append (build-visit-list-from-select-tree node)
-     else collect node))
+nodes in the tree. Will build a breadth first traversal list."
+  (let ((curr-list (list tree)) (final-list ()))
+    (loop while (> (length curr-list) 0) do
+         (let ((curr-item (pop curr-list)))
+           (push (car curr-item) final-list)
+           (loop for n in (cadr curr-item) do (push n curr-list))))
+    (reverse final-list)))
 
 (defun build-sql-column-spec-from-entity (e p)
   "Given an entity and a prefix, build a list for a SQL query to select the
@@ -51,6 +53,14 @@ entity's slots as columns"
     (format nil "~{~a~^, ~}"
             (loop for s in slots collect
                  (format nil "~a.~a AS ~a_~a" table-name s p s)))))
+
+(defun build-join-list-from-tree (tree)
+  "Given a tree (see select-tree docstring for tree structure) produce a string
+containing many left joins based off of the tree's structure"
+  (let ((str ""))
+    
+    str
+    ))
 
 (defmacro select-tree (tree)
   "Selects the tree of entities, and returns a tree in the same shape with the

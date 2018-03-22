@@ -11,7 +11,7 @@
 
 (defun build-visit-list-tests ()
   (prove:plan 1)
-  (prove:is (build-visit-list-from-select-tree '(user (post (comment()))))
+  (prove:is (build-visit-list-from-select-tree '(user ((post ((comment ()))))))
             '(user post comment))
   (prove:finalize))
 
