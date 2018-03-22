@@ -41,6 +41,17 @@ nodes in the tree."
      append (build-visit-list-from-select-tree node)
      else collect node))
 
+(defun build-sql-column-spec-from-entity (e p)
+  "Given an entity and a prefix, build a list for a SQL query to select the
+entity's slots as columns"
+  (let ((table-name (kebab-to-snake-case (string e)))
+        (slots (mapcar (lambda (s) (kebab-to-snake-case
+                                    (string (sb-mop:slot-definition-name s))))
+                       (sb-mop:class-direct-slots (class-of (make-instance e))))))
+    (format nil "~{~a~^, ~}"
+            (loop for s in slots collect
+                 (format nil "~a.~a AS ~a_~a" table-name s p s)))))
+
 (defmacro select-tree (tree)
   "Selects the tree of entities, and returns a tree in the same shape with the
   results. Each node of the input tree is the name of an entity, followed by a
@@ -68,6 +79,4 @@ nodes in the tree."
   ;; tree. We can then traverse the tree, and use a generic function to parse
   ;; all the results out using the prefix as a namespace to make sure things
   ;; don't clash.
-
-
   )

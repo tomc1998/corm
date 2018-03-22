@@ -15,5 +15,13 @@
             '(user post comment))
   (prove:finalize))
 
+(defun build-sql-column-spec-tests ()
+  (prove:plan 1)
+  (defentity select-test-entity ((email "VARCHAR(256)" 'not-null)) ())
+  (print (build-sql-column-spec-from-entity 'select-test-entity "0"))
+  (prove:finalize)
+  )
+
 (select-all-tests)
 (build-visit-list-tests)
+(build-sql-column-spec-tests)
