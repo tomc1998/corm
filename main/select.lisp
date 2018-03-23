@@ -54,13 +54,23 @@ entity's slots as columns"
             (loop for s in slots collect
                  (format nil "~a.~a AS ~a_~a" table-name s p s)))))
 
-(defun build-join-list-from-tree (tree)
-  "Given a tree (see select-tree docstring for tree structure) produce a string
-containing many left joins based off of the tree's structure"
-  (let ((str ""))
-    
-    str
-    ))
+(defun build-join-list-from-visit-list (tree)
+  "Given a select tree, create a string containing left joins for all the items
+in the tree, other than the root element"
+  (let ((curr-list (list tree)) (str ""))
+    (loop while (> (length curr-list) 0) for p from 0
+       do (let ((curr-item (pop curr-list)))
+            (loop for n in (cadr curr-item) for i from 1 do
+                 (push n curr-list)
+                 ;; Get this table's parent & child names
+                 (let* ((parent-name (kebab-to-snake-case (string (car curr-item))))
+                        (child-name (kebab-to-snake-case (string (car n))))
+                        ;; Create left join text with big ugly format, this works i promise
+                        (join (format nil " LEFT JOIN ~a AS ~a_~a ON ~a_~a.parent_~a_id = ~a_~a.id"
+                                      child-name (+ p i) child-name
+                                      (+ p i) child-name parent-name p parent-name)))
+                   (setf str (format nil "~a~%~a" str join))))))
+    str))
 
 (defmacro select-tree (tree)
   "Selects the tree of entities, and returns a tree in the same shape with the

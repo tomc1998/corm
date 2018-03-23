@@ -61,7 +61,7 @@
       ;; Slots
       (body \"VARCHAR (2048)\" :not-null)
       ;; Parents
-      (:author user))
+      (user))
 
   An optional 'override' argument can be set to T to drop the SQL table before
   re-creating it."
@@ -74,10 +74,10 @@
           "CREATE TABLE IF NOT EXISTS "
           (kebab-to-snake-case (string name))
           " ("
-          (format nil "~{parent_~a_id BIGINT UNSIGNED~^,~%~*~}"
+          (format nil "~{parent_~a_id BIGINT UNSIGNED,~%~}"
                   (mapcar (lambda (s) (kebab-to-snake-case (string s))) parents))
           (reduce (lambda (s0 s1) (format nil "~a,~%~a" s0 s1))
-                  (cons "id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT"
+                  (cons " id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT"
                         (loop for s in slots collect (slot-to-column-def s))))
           ");"))
         (slot-names (loop for s in slots collect
@@ -91,9 +91,8 @@
          (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
                         (error 'entity-already-exists) (error e))))
        (defclass ,name () ,(append
-                            (loop for (k v) on parents by #'cddr collect
-                                 (list (intern (format nil "PARENT-~a-ID" (string-upcase k)))
-                                       :initarg k :initform NIL))
+                            (loop for p in parents collect
+                                 (list (intern (format nil "PARENT-~a-ID" (string-upcase p)))
+                                       :initarg p :initform NIL))
                             (list '(id :initarg :id :initform NIL))
-                            slot-names)))
-    ))
+                            slot-names)))))

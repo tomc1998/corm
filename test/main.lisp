@@ -54,7 +54,7 @@
 
   ;; Test defentity child
   (defentity test-entity-child
-      ((some-data "VARCHAR(2048)" :not-null)) (:owner test-entity) T)
+      ((some-data "VARCHAR(2048)" :not-null)) (test-entity) T)
 
   (prove:finalize))
 

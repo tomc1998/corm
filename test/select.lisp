@@ -18,10 +18,22 @@
 (defun build-sql-column-spec-tests ()
   (prove:plan 1)
   (defentity select-test-entity ((email "VARCHAR(256)" 'not-null)) ())
-  (print (build-sql-column-spec-from-entity 'select-test-entity "0"))
-  (prove:finalize)
+  (prove:is (build-sql-column-spec-from-entity 'select-test-entity "0")
+            "select_test_entity.id AS 0_id, select_test_entity.email AS 0_email")
+  (prove:finalize))
+
+(defun build-join-list-test ()
+  (prove:plan 1)
+  (defentity user ((email "VARCHAR(256)" 'not-null)) ())
+  (defentity post ((email "VARCHAR(256)" 'not-null)) (user))
+  (defentity comment ((email "VARCHAR(256)" 'not-null)) (post))
+  (prove:is (build-join-list-from-visit-list '(user ((post ((comment ()))))))
+            "
+ LEFT JOIN post AS 1_post ON 1_post.parent_user_id = 0_user.id
+ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id")
   )
 
 (select-all-tests)
 (build-visit-list-tests)
 (build-sql-column-spec-tests)
+(build-join-list-test)
