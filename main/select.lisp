@@ -5,6 +5,25 @@
       for s in ',slots
       append (list (intern (string s) :keyword) v)))
 
+(defun entity-from-row (e p r)
+  "Given an entity, prefix, and row, extract the data from the row with
+the given prefix and inserts the data into the entity of the given type. For convenience, returns e."
+  (let* (
+         ;; Get the slots of the entity
+         (slots (mapcar #'sb-mop:slot-definition-name
+                       (sb-mop:class-direct-slots (class-of e))))
+         ;; Get slots as mysql column name symbols plus prefix (keywords)
+         (column-names
+          (mapcar (lambda (s)
+                    (intern
+                     (format nil "~a_~a" p
+                             (kebab-to-snake-case (string s))) :keyword))
+                  slots)))
+    ;; loop over all the column names, and extract
+    (loop for s in slots for c in column-names do
+         (setf (slot-value e s) (getf r c))))
+  e)
+
 (defmacro select-all (e)
   "Select all entities of the given type. Usage:
 
@@ -52,34 +71,35 @@ entity's slots as columns"
                        (sb-mop:class-direct-slots (class-of (make-instance e))))))
     (format nil "~{~a~^, ~}"
             (loop for s in slots collect
-                 (format nil "~a.~a AS ~a_~a" table-name s p s)))))
+                 (format nil "~a_~a.~a AS ~a_~a" p table-name s p s)))))
 
 (defun build-join-list-from-visit-list (tree)
   "Given a select tree, create a string containing left joins for all the items
 in the tree, other than the root element"
-  (let ((curr-list (list tree)) (str ""))
-    (loop while (> (length curr-list) 0) for p from 0
-       do (let ((curr-item (pop curr-list)))
-            (loop for n in (cadr curr-item) for i from 1 do
+  (let ((curr-list (list tree)) (str "") (p 1))
+    (loop while (> (length curr-list) 0)
+       do (let ((parent-p (- p 1)) (curr-item (pop curr-list)))
+            (loop for n in (cadr curr-item) do
                  (push n curr-list)
-                 ;; Get this table's parent & child names
+               ;; Get this table's parent & child names
                  (let* ((parent-name (kebab-to-snake-case (string (car curr-item))))
                         (child-name (kebab-to-snake-case (string (car n))))
                         ;; Create left join text with big ugly format, this works i promise
-                        (join (format nil " LEFT JOIN ~a AS ~a_~a ON ~a_~a.parent_~a_id = ~a_~a.id"
-                                      child-name (+ p i) child-name
-                                      (+ p i) child-name parent-name p parent-name)))
-                   (setf str (format nil "~a~%~a" str join))))))
+                        (join (format nil "LEFT JOIN ~a AS ~a_~a ON ~a_~a.parent_~a_id = ~a_~a.id"
+                                      child-name p child-name
+                                      p child-name parent-name parent-p parent-name)))
+                   (setf str (format nil "~a~%~a" str join)))
+                 (setf p (+ p 1)))))
     str))
 
-(defmacro select-tree (tree)
+(defun select-tree (tree)
   "Selects the tree of entities, and returns a tree in the same shape with the
   results. Each node of the input tree is the name of an entity, followed by a
   list of child nodes which are joined in a many to one relationship with the
   parent. For example, given the example of fetching all the posts made by a
   user, and all the comments on those posts:
 
-  (select-tree (user (post (comment ()))))
+  (select-tree (user ((post ((comment ()))))))
 
   This would return a list of output nodes. Each output node is a list where the
   first element contains an entity instance, and the 2nd element is a list of
@@ -99,4 +119,32 @@ in the tree, other than the root element"
   ;; tree. We can then traverse the tree, and use a generic function to parse
   ;; all the results out using the prefix as a namespace to make sure things
   ;; don't clash.
-  )
+  (let* ((visit-list (build-visit-list-from-select-tree tree))
+         (column-spec (format nil "~{~a~^, ~}"
+                              (loop for v in visit-list for i from 0 collect
+                                   (build-sql-column-spec-from-entity v i))))
+         (join-list (build-join-list-from-visit-list tree))
+         (table-name (kebab-to-snake-case (string (car tree))))
+         (sql (print (format nil "SELECT ~a FROM ~a AS 0_~:*~a ~a" column-spec
+                             table-name
+                             join-list)))
+         (rows (dbi:fetch-all (dbi:execute (dbi:prepare *db* sql))))
+         ;; Create empty list which will contain all the entities
+         (e-list ()))
+    (loop for row in rows do
+         (loop for e in visit-list for p from 0 do
+              (let ((e (entity-from-row (make-instance e) p row)))
+                ;; Make sure this entity is value (i.e. non-nil ID) and isn't a duplicate
+                (if (and
+                     (slot-value e 'id) ; Check ID non null
+                     (not (member-if ; Check for duplicate
+                           (lambda (_e)
+                             (and
+                              ;; Make sure they're the right type
+                              (eq (type-of e) (type-of _e))
+                              ;; Compare IDs - if they're the same, we found a dupe
+                              (=  (slot-value e 'id)
+                                 (slot-value _e 'id))))
+                           e-list))) (push e e-list))
+                )))
+    (print (length e-list))))

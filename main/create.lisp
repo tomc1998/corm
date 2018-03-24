@@ -90,9 +90,11 @@
        (handler-case (dbi:execute (dbi:prepare *db* ,sql-def))
          (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
                         (error 'entity-already-exists) (error e))))
-       (defclass ,name () ,(append
-                            (loop for p in parents collect
-                                 (list (intern (format nil "PARENT-~a-ID" (string-upcase p)))
-                                       :initarg p :initform NIL))
-                            (list '(id :initarg :id :initform NIL))
-                            slot-names)))))
+       (defclass ,name ()
+         ,(append
+           (loop for p in parents collect
+                (let ((parent-symbol (format nil "PARENT-~a-ID" (string-upcase p))))
+                  (list (intern parent-symbol) :initarg (intern parent-symbol :keyword)
+                        :initform NIL)))
+           (list '(id :initarg :id :initform NIL))
+           slot-names)))))

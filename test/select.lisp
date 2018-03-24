@@ -19,21 +19,34 @@
   (prove:plan 1)
   (defentity select-test-entity ((email "VARCHAR(256)" 'not-null)) ())
   (prove:is (build-sql-column-spec-from-entity 'select-test-entity "0")
-            "select_test_entity.id AS 0_id, select_test_entity.email AS 0_email")
+            "0_select_test_entity.id AS 0_id, 0_select_test_entity.email AS 0_email")
   (prove:finalize))
 
 (defun build-join-list-test ()
   (prove:plan 1)
-  (defentity user ((email "VARCHAR(256)" 'not-null)) ())
-  (defentity post ((email "VARCHAR(256)" 'not-null)) (user))
-  (defentity comment ((email "VARCHAR(256)" 'not-null)) (post))
+  (defentity user ((email "VARCHAR(256)" 'not-null)) () T)
+  (defentity post ((body"VARCHAR(256)" 'not-null)) (user) T)
+  (defentity comment ((body "VARCHAR(256)" 'not-null)) (post) T)
   (prove:is (build-join-list-from-visit-list '(user ((post ((comment ()))))))
             "
- LEFT JOIN post AS 1_post ON 1_post.parent_user_id = 0_user.id
- LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id")
+LEFT JOIN post AS 1_post ON 1_post.parent_user_id = 0_user.id
+LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"))
+
+(defun select-tree-tests ()
+  (insert-one (make-instance 'user :email "a@a.a"))
+  (insert-one (make-instance 'post :parent-user-id 1 :body "aaa000"))
+  (insert-one (make-instance 'post :parent-user-id 1 :body "aaa111"))
+  (insert-one (make-instance 'post :parent-user-id 1 :body "aaa222"))
+  (insert-one (make-instance 'comment :parent-post-id 1 :body "commentaaa000"))
+  (insert-one (make-instance 'comment :parent-post-id 1 :body "commentaaa111"))
+  (insert-one (make-instance 'comment :parent-post-id 2 :body "commentaaa222"))
+  (insert-one (make-instance 'user :email "a@a.a"))
+  (select-tree '(user ((post ((comment()))))))
   )
 
-(select-all-tests)
 (build-visit-list-tests)
 (build-sql-column-spec-tests)
 (build-join-list-test)
+
+(select-all-tests)
+(select-tree-tests)
