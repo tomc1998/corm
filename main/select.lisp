@@ -11,7 +11,7 @@ the given prefix and inserts the data into the entity of the given type. For con
   (let* (
          ;; Get the slots of the entity
          (slots (mapcar #'sb-mop:slot-definition-name
-                       (sb-mop:class-direct-slots (class-of e))))
+                        (sb-mop:class-direct-slots (class-of e))))
          ;; Get slots as mysql column name symbols plus prefix (keywords)
          (column-names
           (mapcar (lambda (s)
@@ -92,6 +92,36 @@ in the tree, other than the root element"
                  (setf p (+ p 1)))))
     str))
 
+
+(defun add-to-parents (e-list e-node)
+  "Add the given entity e to all the entities in the list e-list where e is the
+child of the entity in e-list. The e-list is a list of entity nodes, (i.e. an
+entity in the car, 2nd item is a list of children)"
+  (let* ((e (car e-node))
+         (slots (mapcar #'sb-mop:slot-definition-name
+                        (sb-mop:class-direct-slots (class-of e))))
+         (parent-slots
+          (remove-if-not (lambda (s)
+                           (let ((s (string s))) (and
+                                                  (> (length s) 10)
+                                                  (string-equal "-ID" (subseq s (- (length s) 3)))
+                                                  (string-equal "PARENT-" (subseq s 0 7)))))
+                         slots))
+         ;; Names of the parents (just strip the 'parent-' and the '-id' from
+         ;; the start and end of the string)
+         (parent-names (mapcar (lambda (s)
+                                 (subseq (string s) 7 (- (length (string s)) 3)))
+                               parent-slots)))
+    (loop for s in parent-slots for n in parent-names do
+         (let* ((parent-id (slot-value e s))
+                (parent (find-if
+                         (lambda (_e)
+                           (and
+                            (string-equal (type-of (car _e)) n)
+                            (= parent-id (slot-value (car _e) 'id))))
+                         e-list)))
+           (if parent (push e-node (cadr parent)))))))
+
 (defun select-tree (tree)
   "Selects the tree of entities, and returns a tree in the same shape with the
   results. Each node of the input tree is the name of an entity, followed by a
@@ -99,7 +129,7 @@ in the tree, other than the root element"
   parent. For example, given the example of fetching all the posts made by a
   user, and all the comments on those posts:
 
-  (select-tree (user ((post ((comment ()))))))
+  (select-tree '(user ((post ((comment ()))))))
 
   This would return a list of output nodes. Each output node is a list where the
   first element contains an entity instance, and the 2nd element is a list of
@@ -125,9 +155,9 @@ in the tree, other than the root element"
                                    (build-sql-column-spec-from-entity v i))))
          (join-list (build-join-list-from-visit-list tree))
          (table-name (kebab-to-snake-case (string (car tree))))
-         (sql (print (format nil "SELECT ~a FROM ~a AS 0_~:*~a ~a" column-spec
-                             table-name
-                             join-list)))
+         (sql (format nil "SELECT ~a FROM ~a AS 0_~:*~a ~a" column-spec
+                      table-name
+                      join-list))
          (rows (dbi:fetch-all (dbi:execute (dbi:prepare *db* sql))))
          ;; Create empty list which will contain all the entities
          (e-list ()))
@@ -141,10 +171,16 @@ in the tree, other than the root element"
                            (lambda (_e)
                              (and
                               ;; Make sure they're the right type
-                              (eq (type-of e) (type-of _e))
+                              (eq (type-of e) (type-of (car _e)))
                               ;; Compare IDs - if they're the same, we found a dupe
                               (=  (slot-value e 'id)
-                                 (slot-value _e 'id))))
-                           e-list))) (push e e-list))
-                )))
-    (print (length e-list))))
+                                  (slot-value (car _e) 'id))))
+                           e-list)))
+                    (let ((e-node (list e ())))
+                      (add-to-parents e-list e-node)
+                      (push e-node e-list))))))
+    ;; Remove non-top-level entity nodes from e-list
+    (remove-if-not
+     (lambda (s)
+       (string-equal (string (car visit-list))
+                     (string (type-of (car s))))) e-list)))

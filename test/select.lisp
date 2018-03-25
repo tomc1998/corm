@@ -30,9 +30,11 @@
   (prove:is (build-join-list-from-visit-list '(user ((post ((comment ()))))))
             "
 LEFT JOIN post AS 1_post ON 1_post.parent_user_id = 0_user.id
-LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"))
+LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
+            "Join list should be build correctly"))
 
 (defun select-tree-tests ()
+  (prove:plan 1)
   (insert-one (make-instance 'user :email "a@a.a"))
   (insert-one (make-instance 'post :parent-user-id 1 :body "aaa000"))
   (insert-one (make-instance 'post :parent-user-id 1 :body "aaa111"))
@@ -41,8 +43,11 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"))
   (insert-one (make-instance 'comment :parent-post-id 1 :body "commentaaa111"))
   (insert-one (make-instance 'comment :parent-post-id 2 :body "commentaaa222"))
   (insert-one (make-instance 'user :email "a@a.a"))
-  (select-tree '(user ((post ((comment()))))))
-  )
+
+  ;; TODO: How to test the correct tree response? Pretty awkward.
+  (let ((tree (select-tree '(user ((post ((comment()))))))))
+    (prove:is (length tree) 2))
+  (prove:finalize))
 
 (build-visit-list-tests)
 (build-sql-column-spec-tests)
