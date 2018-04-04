@@ -4,6 +4,8 @@
              entity-already-exists
              select-tree
              insert-one
+
+             id
              ))
 (in-package :corm)
 
