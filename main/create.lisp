@@ -1,3 +1,5 @@
+(in-package :corm)
+
 (defun sql-mod-from-keyword (s)
   "Converts a SQL mod keyword to a valid string sql modifier. For example,
   :primary maps to \"PRIMARY KEY\". Passing a string in as s simply makes this a
@@ -21,7 +23,7 @@
 
 (define-condition entity-already-exists (condition) ())
 
-(defmacro defentity (name slots parents &optional override)
+(defmacro defentity (name slots &optional parents override)
   "Define an entity with the given name. This macro creates a class with the
   entity of that name, and creates the appropriate corresponding persistence
   storage. You can create a new entity with the make-<name> function.

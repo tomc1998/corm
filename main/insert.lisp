@@ -1,3 +1,5 @@
+(in-package :corm)
+
 (defun insert-one (e)
   "Insert an entity into the DB. NIL slots amount to NULL, or the default column
   value. NIL as an auto-increment field for example will generate a new

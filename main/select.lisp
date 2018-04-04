@@ -1,3 +1,5 @@
+(in-package :corm)
+
 (defmacro init-args-from-row (slots row)
   "From a list of slots & a mysql row, generate a list of initargs for an entity"
   `(loop

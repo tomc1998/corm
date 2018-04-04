@@ -1,3 +1,5 @@
+(in-package :corm)
+
 (defun select-all-tests ()
   (prove:plan 4)
   (prove:is

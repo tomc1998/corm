@@ -1,8 +1,13 @@
+(defpackage :corm (:use "COMMON-LISP")
+            (:export
+             defentity
+             entity-already-exists
+             select-tree
+             insert-one
+             ))
+(in-package :corm)
+
 (asdf:defsystem corm
-  :description "An example HTTP server in lisp"
-  :version "0.0.1"
-  :author "Tom <thomascheng1998@gmail.com>"
-  :licence "Public Domain"
   :depends-on (:cl-dbi)
   :components (
                (:file "main/db")

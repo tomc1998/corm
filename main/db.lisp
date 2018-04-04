@@ -1,3 +1,5 @@
+(in-package :corm)
+
 ;; Connect to DB
 (defvar *db* (dbi:connect :mysql :database-name "test" :username "root" :password ""))
 
