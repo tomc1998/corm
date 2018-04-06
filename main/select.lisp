@@ -90,21 +90,21 @@ entity in the car, 2nd item is a list of children)"
 
 (defun generate-where-clause (visit-list where)
   "Given a visit list and the where clause, generate a SQL where clause"
-  (if (not (listp where)) (return-from generate-where-clause (kebab-to-snake-case (string where))))
+  (if (not (listp where)) (return-from generate-where-clause (kebab-to-snake-case (write-to-string where))))
   (cond
     ;; Process unary operations
     ((member (car where) '(not))
-     (format nil "~a ~a"
-             (string (car where))
+     (format nil "(~a ~a)"
+             (write-to-string (car where))
              (generate-where-clause visit-list (second where))))
     ;; Process binary operations
     ((member (car where) '(= and or is like > >= < <= != sounds-like rlike - + * /))
-     (format nil "~a ~a ~a"
+     (format nil "(~a ~a ~a)"
              (generate-where-clause visit-list (second where))
-             (string (car where))
+             (write-to-string (car where))
              (generate-where-clause visit-list (third where))))
     ;; Assume we're going for a 'dotted access (i.e. 'user.id')'
-    (t (kebab-to-snake-case (format nil "~a_~a" (position (car where) visit-list) (second where))))
+    (t (kebab-to-snake-case (format nil "~a_~a.~a" (position (car where) visit-list) (car where) (second where))))
     ))
 
 (defun select-tree (tree &key where)
@@ -140,9 +140,11 @@ entity in the car, 2nd item is a list of children)"
                                    (build-sql-column-spec-from-entity v i))))
          (join-list (build-join-list-from-visit-list tree))
          (table-name (kebab-to-snake-case (string (car tree))))
-         (sql (format nil "SELECT ~a FROM ~a AS 0_~:*~a ~a" column-spec
+         (where-clause (if where (generate-where-clause visit-list where) "TRUE"))
+         (sql (format nil "SELECT ~a FROM ~a AS 0_~:*~a ~a WHERE ~a" column-spec
                       table-name
-                      join-list))
+                      join-list
+                      where-clause))
          (rows (dbi:fetch-all (dbi:execute (dbi:prepare *db* sql))))
          ;; Create empty list which will contain all the entities
          (e-list ()))

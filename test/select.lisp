@@ -3,7 +3,7 @@
 (defun generate-where-clause-tests ()
   (prove:plan 1)
   (prove:is (generate-where-clause '(user post comment) '(and (not (comment id)) (= (user id) (post id))))
-            "NOT 2_id AND 0_id = 1_id")
+            "((NOT 2_id) AND (0_id = 1_id))")
   (prove:finalize)
   )
 
@@ -45,6 +45,8 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
   ;; TODO: How to test the correct tree response? Pretty awkward.
   (let ((tree (select-tree '(user ((post ((comment ()))))))))
     (prove:is (length tree) 2))
+  (let ((tree (select-tree '(user ((post ((comment ()))))) :where '(= (user id) 1))))
+    (prove:is (length tree) 1))
   (prove:finalize))
 
 (generate-where-clause-tests)
