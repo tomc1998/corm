@@ -22,7 +22,7 @@
                                                "main/insert"))))
 
 ;; Testing ASDF system
-(asdf:defsystem tests
+(asdf:defsystem corm-tests
   :depends-on (:corm :prove)
   :defsystem-depends-on (:prove-asdf)
   :components ((:test-file "test/main")

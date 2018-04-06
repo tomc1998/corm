@@ -1,12 +1,5 @@
 (in-package :corm)
 
-(defmacro init-args-from-row (slots row)
-  "From a list of slots & a mysql row, generate a list of initargs for an entity"
-  `(loop
-      for (k v) on ,row by #'cddr
-      for s in ',slots
-      append (list (intern (string s) :keyword) v)))
-
 (defun entity-from-row (e p r)
   "Given an entity, prefix, and row, extract the data from the row with
 the given prefix and inserts the data into the entity of the given type. For convenience, returns e."
@@ -25,34 +18,6 @@ the given prefix and inserts the data into the entity of the given type. For con
     (loop for s in slots for c in column-names do
          (setf (slot-value e s) (getf r c))))
   e)
-
-(defmacro select-all (e)
-  "Select all entities of the given type. Usage:
-
-  ;; Define entity called test-entity...
-  (defentity test-entity
-      ((id \"BIGINT UNSIGNED\" :primary :auto-increment)
-       (email \"VARCHAR(1024)\" :not-null)) T)
-  ;; Insert some entities
-  (insert-one (make-entity :email \"a@mail.com\"))
-  (insert-one (make-entity :email \"b@mail.com\"))
-  (insert-one (make-entity :email \"c@mail.com\"))
-  ;; Select all inserted test-entity entities, print their emails
-  (loop for e in (select-all test-entity) do (print (slot-value e 'email)))"
-
-  ;; Get slots of e & the table name
-  (let ((slots (mapcar #'sb-mop:slot-definition-name
-                       (sb-mop:class-direct-slots (class-of (make-instance e)))))
-        (table-name (kebab-to-snake-case (string e))))
-    ;; Get slots as column names
-    (let ((columns (mapcar (lambda (s) (kebab-to-snake-case (string s))) slots)))
-      ;; Build query
-      (let ((query (format nil "SELECT ~{~a~^, ~} FROM ~a" columns table-name)))
-        ;; Execute query & put into the entity
-        `(loop for row in (dbi:fetch-all (dbi:execute (dbi:prepare *db* ,query)))
-            ;; Make instance from initargs
-            collect (apply #'make-instance
-                           (append (list ',e) (init-args-from-row ,slots row))))))))
 
 (defun build-visit-list-from-select-tree (tree)
   "Used by the select tree function to build a list of references to all the
@@ -94,7 +59,6 @@ in the tree, other than the root element"
                  (setf p (+ p 1)))))
     str))
 
-
 (defun add-to-parents (e-list e-node)
   "Add the given entity e to all the entities in the list e-list where e is the
 child of the entity in e-list. The e-list is a list of entity nodes, (i.e. an
@@ -124,14 +88,33 @@ entity in the car, 2nd item is a list of children)"
                          e-list)))
            (if parent (push e-node (cadr parent)))))))
 
-(defun select-tree (tree)
+(defun generate-where-clause (visit-list where)
+  "Given a visit list and the where clause, generate a SQL where clause"
+  (if (not (listp where)) (return-from generate-where-clause (kebab-to-snake-case (string where))))
+  (cond
+    ;; Process unary operations
+    ((member (car where) '(not))
+     (format nil "~a ~a"
+             (string (car where))
+             (generate-where-clause visit-list (second where))))
+    ;; Process binary operations
+    ((member (car where) '(= and or is like > >= < <= != sounds-like rlike - + * /))
+     (format nil "~a ~a ~a"
+             (generate-where-clause visit-list (second where))
+             (string (car where))
+             (generate-where-clause visit-list (third where))))
+    ;; Assume we're going for a 'dotted access (i.e. 'user.id')'
+    (t (kebab-to-snake-case (format nil "~a_~a" (position (car where) visit-list) (second where))))
+    ))
+
+(defun select-tree (tree &key where)
   "Selects the tree of entities, and returns a tree in the same shape with the
   results. Each node of the input tree is the name of an entity, followed by a
   list of child nodes which are joined in a many to one relationship with the
   parent. For example, given the example of fetching all the posts made by a
   user, and all the comments on those posts:
 
-  (select-tree '(user ((post ((comment ()))))))
+  (select-tree '(user ((post ((comment ()))))) :where (= (user id) (post id))
 
   This would return a list of output nodes. Each output node is a list where the
   first element contains an entity instance, and the 2nd element is a list of

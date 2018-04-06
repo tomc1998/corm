@@ -1,15 +1,11 @@
 (in-package :corm)
 
-(defun select-all-tests ()
-  (prove:plan 4)
-  (prove:is
-   (init-args-from-row (id email) (list :row-id 123 :row-email "asd"))
-   (list :id 123 :email "asd"))
-  (let ((entity (nth 0 (select-all test-entity))))
-    (prove:is (slot-value entity 'id) 1)
-    (prove:is (slot-value entity 'email) "a@a.a"))
-  (prove:is (length (select-all test-entity)) 2)
-  (prove:finalize))
+(defun generate-where-clause-tests ()
+  (prove:plan 1)
+  (prove:is (generate-where-clause '(user post comment) '(and (not (comment id)) (= (user id) (post id))))
+            "NOT 2_id AND 0_id = 1_id")
+  (prove:finalize)
+  )
 
 (defun build-visit-list-tests ()
   (prove:plan 1)
@@ -27,7 +23,7 @@
 (defun build-join-list-test ()
   (prove:plan 1)
   (defentity user ((email "VARCHAR(256)" 'not-null)) () T)
-  (defentity post ((body"VARCHAR(256)" 'not-null)) (user) T)
+  (defentity post ((body "VARCHAR(256)" 'not-null)) (user) T)
   (defentity comment ((body "VARCHAR(256)" 'not-null)) (post) T)
   (prove:is (build-join-list-from-visit-list '(user ((post ((comment ()))))))
             "
@@ -47,13 +43,13 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
   (insert-one (make-instance 'user :email "a@a.a"))
 
   ;; TODO: How to test the correct tree response? Pretty awkward.
-  (let ((tree (select-tree '(user ((post ((comment()))))))))
+  (let ((tree (select-tree '(user ((post ((comment ()))))))))
     (prove:is (length tree) 2))
   (prove:finalize))
 
+(generate-where-clause-tests)
 (build-visit-list-tests)
 (build-sql-column-spec-tests)
 (build-join-list-test)
 
-(select-all-tests)
 (select-tree-tests)
