@@ -89,23 +89,33 @@ entity in the car, 2nd item is a list of children)"
            (if parent (push e-node (cadr parent)))))))
 
 (defun generate-where-clause (visit-list where)
-  "Given a visit list and the where clause, generate a SQL where clause"
-  (if (not (listp where)) (return-from generate-where-clause (kebab-to-snake-case (write-to-string where))))
-  (cond
-    ;; Process unary operations
-    ((member (car where) '(not))
-     (format nil "(~a ~a)"
-             (write-to-string (car where))
-             (generate-where-clause visit-list (second where))))
-    ;; Process binary operations
-    ((member (car where) '(= and or is like > >= < <= != sounds-like rlike - + * /))
-     (format nil "(~a ~a ~a)"
-             (generate-where-clause visit-list (second where))
-             (write-to-string (car where))
-             (generate-where-clause visit-list (third where))))
-    ;; Assume we're going for a 'dotted access (i.e. 'user.id')'
-    (t (kebab-to-snake-case (format nil "~a_~a.~a" (position (car where) visit-list) (car where) (second where))))
-    ))
+  "Given a visit list and the where clause, generate a SQL where clause and a
+    list of arguments. These are returned as a cons - the first item is a string
+    (the sql query) and the cdr is the list of arguments."
+  (let ((args ()))
+    (labels ((inner (where)
+             ;; If where isn't a list, assume this is an argument.
+             (if (not (listp where))
+                 (progn
+                   (push where args)
+                   (return-from inner "?")))
+             (cond
+               ;; Process unary operations
+               ((member (car where) '(not))
+                (format nil "(~a ~a)"
+                        (write-to-string (car where))
+                        (inner (second where))))
+               ;; Process binary operations
+               ((member (car where) '(= and or is like > >= < <= != sounds-like rlike - + * /))
+                (format nil "(~a ~a ~a)"
+                        (inner (second where))
+                        (write-to-string (car where))
+                        (inner (third where))))
+               ;; Assume we're going for a 'dotted access (i.e. 'user.id')'
+               (t (kebab-to-snake-case (format nil "~a_~a.~a" (position (car where) visit-list)
+                                               (car where) (second where)))))))
+      ;; Create an inner function to allow recursive calls with over-arching state via closure
+      (cons (inner where) (reverse args)))))
 
 (defun select-tree (tree &key where)
   "Selects the tree of entities, and returns a tree in the same shape with the
@@ -140,12 +150,14 @@ entity in the car, 2nd item is a list of children)"
                                    (build-sql-column-spec-from-entity v i))))
          (join-list (build-join-list-from-visit-list tree))
          (table-name (kebab-to-snake-case (string (car tree))))
-         (where-clause (if where (generate-where-clause visit-list where) "TRUE"))
+         (where-clause (if where (generate-where-clause visit-list where) '("TRUE")))
+         (where-sql (car where-clause))
+         (where-args (cdr where-clause))
          (sql (format nil "SELECT ~a FROM ~a AS 0_~:*~a ~a WHERE ~a" column-spec
                       table-name
                       join-list
-                      where-clause))
-         (rows (dbi:fetch-all (dbi:execute (dbi:prepare *db* sql))))
+                      where-sql))
+         (rows (dbi:fetch-all (dbi:execute (dbi:prepare *db* sql) where-args)))
          ;; Create empty list which will contain all the entities
          (e-list ()))
     (loop for row in rows do

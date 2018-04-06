@@ -1,9 +1,13 @@
 (in-package :corm)
 
 (defun generate-where-clause-tests ()
-  (prove:plan 1)
+  (prove:plan 2)
   (prove:is (generate-where-clause '(user post comment) '(and (not (comment id)) (= (user id) (post id))))
-            "((NOT 2_id) AND (0_id = 1_id))")
+            '("((NOT 2_comment.id) AND (0_user.id = 1_post.id))")
+            "generate-where-clause works")
+  (prove:is (generate-where-clause '(user) '(or (= (user id) 1) (= (user id) 2)))
+            '("((0_user.id = ?) OR (0_user.id = ?))" 1 2)
+            "generate-where-clause correctly generates prepared statement args")
   (prove:finalize)
   )
 
@@ -32,7 +36,7 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
             "Join list should be build correctly"))
 
 (defun select-tree-tests ()
-  (prove:plan 1)
+  (prove:plan 2)
   (insert-one (make-instance 'user :email "a@a.a"))
   (insert-one (make-instance 'post :parent-user-id 1 :body "aaa000"))
   (insert-one (make-instance 'post :parent-user-id 1 :body "aaa111"))
