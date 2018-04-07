@@ -8,6 +8,7 @@
   (prove:is (generate-where-clause '(user) '(or (= (user id) 1) (= (user id) 2)))
             '("((0_user.id = ?) OR (0_user.id = ?))" 1 2)
             "generate-where-clause correctly generates prepared statement args")
+  (print (generate-where-clause '(user-auth) '(= (user-auth user) "asd")))
   (prove:finalize)
   )
 
@@ -19,7 +20,7 @@
 
 (defun build-sql-column-spec-tests ()
   (prove:plan 1)
-  (defentity select-test-entity ((email "VARCHAR(256)" 'not-null)) ())
+  (defentity select-test-entity ((email "VARCHAR(256)" :not-null)) ())
   (prove:is (build-sql-column-spec-from-entity 'select-test-entity "0")
             "0_select_test_entity.id AS 0_id, 0_select_test_entity.email AS 0_email")
   (prove:finalize))

@@ -1,3 +1,5 @@
+(in-package :corm)
+
 (setf prove:*default-reporter* :list)
 
 (defun name-case-transform-tests ()
