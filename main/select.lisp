@@ -157,7 +157,8 @@ entity in the car, 2nd item is a list of children)"
                       table-name
                       join-list
                       where-sql))
-         (rows (dbi:fetch-all (dbi:execute (dbi:prepare *db* sql) where-args)))
+         (rows (dbi:fetch-all (apply 'dbi:execute
+                                     (append (list (dbi:prepare *db* sql)) where-args))))
          ;; Create empty list which will contain all the entities
          (e-list ()))
     (loop for row in rows do

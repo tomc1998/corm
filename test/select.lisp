@@ -37,7 +37,6 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
             "Join list should be build correctly"))
 
 (defun select-tree-tests ()
-  (prove:plan 2)
   (insert-one (make-instance 'user :email "a@a.a"))
   (insert-one (make-instance 'post :parent-user-id 1 :body "aaa000"))
   (insert-one (make-instance 'post :parent-user-id 1 :body "aaa111"))
@@ -48,10 +47,13 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
   (insert-one (make-instance 'user :email "a@a.a"))
 
   ;; TODO: How to test the correct tree response? Pretty awkward.
+  (prove:plan 3)
   (let ((tree (select-tree '(user ((post ((comment ()))))))))
     (prove:is (length tree) 2))
   (let ((tree (select-tree '(user ((post ((comment ()))))) :where '(= (user id) 1))))
     (prove:is (length tree) 1))
+  (let ((tree (select-tree '(user ((post ((comment ()))))) :where '(like (user email) "a@a%"))))
+    (prove:is (length tree) 2))
   (prove:finalize))
 
 (generate-where-clause-tests)
