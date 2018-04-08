@@ -1,5 +1,7 @@
 (in-package :corm)
 
+(define-condition insert-duplicate-error (error) ())
+
 (defun insert-one (e)
   "Insert an entity into the DB. NIL slots amount to NULL, or the default column
   value. NIL as an auto-increment field for example will generate a new
@@ -33,5 +35,11 @@
         ;; Actually query
         (apply #'dbi:execute (append (list (dbi:prepare *db* query)) params))
         ;; Get the last insert ID
-        (nth 1 (dbi:fetch (dbi:execute
-                           (dbi:prepare *db* "SELECT LAST_INSERT_ID()"))))))))
+        (nth 1 (dbi:fetch
+                (handler-case
+                    (dbi:execute
+                     (dbi:prepare *db* "SELECT LAST_INSERT_ID()"))
+                  (dbi.error:<dbi-database-error> (e)
+                    (if (= 1062 (slot-value e 'dbi.error::error-code))
+                        (error 'insert-duplicate-error)
+                        (error e))))))))))
