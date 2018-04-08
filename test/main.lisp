@@ -36,7 +36,7 @@
 
   ;; Test whether defentity works as expected
   (defentity test-entity
-      ((name "VARCHAR(256)" :not-null)) () T)
+      ((name "VARCHAR(256)" :not-null :unique)) () T)
   (let ((instance (make-instance 'test-entity :name "Tom")))
     (prove:ok instance
               "Test entity structure should have a defined constructor")
@@ -62,14 +62,28 @@
   (prove:plan 2)
   (prove:is (insert-one (make-instance 'test-entity :email "a@a.a")) 1
             "Inserting should return the proper auto-insert ID")
-  (prove:is (insert-one (make-instance 'test-entity :id 234 :email "a@a.a")) 1
+  (prove:is (insert-one (make-instance 'test-entity :id 234 :email "b@b.b")) 1
             "Inserting should return the old value of last insert ID if the ID
             of the entity was specified")
-  (prove:finalize)
-  )
+  (prove:finalize))
+
+(defun duplicate-key-tests ()
+  (defentity dup-test-entity
+      ((email "VARCHAR(1024)" :not-null :unique)) () T)
+  (prove:plan 3)
+  (prove:is (insert-one (make-instance 'dup-test-entity :email "asd")) 1)
+  (prove:is (handler-case (insert-one (make-instance 'dup-test-entity :email "asd"))
+              (insert-duplicate-error () :unique-error))
+            :unique-error "Unique error should be thrown as such")
+  (defclass non-entity () ((email :initarg :email)))
+  (prove:is (handler-case (insert-one (make-instance 'non-entity :email "asd"))
+              (insert-duplicate-error () :unique-error)
+              (condition () :error)) :error "Non-unique error shouldn't flag as unique")
+  (prove:finalize))
 
 (name-case-transform-tests)
 (sql-mod-from-keyword-tests)
 (column-def-tests)
 (defentity-tests)
 (insert-one-tests)
+(duplicate-key-tests)

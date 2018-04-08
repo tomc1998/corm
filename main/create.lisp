@@ -8,6 +8,7 @@
     ((typep s 'string) s)
     ((eq s :default) "DEFAULT")
     ((eq s :not-null) "NOT NULL")
+    ((eq s :unique) "UNIQUE")
     ((eq s :auto-increment) "AUTO_INCREMENT")))
 
 (defun slot-to-column-def (s)

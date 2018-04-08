@@ -4,6 +4,7 @@
              entity-already-exists
              select-tree
              insert-one
+             insert-duplicate-error
 
              id
              ))

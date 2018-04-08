@@ -33,13 +33,13 @@
             (params (loop for c in slots collect
                          (format nil "~a" (slot-value e c)))))
         ;; Actually query
-        (apply #'dbi:execute (append (list (dbi:prepare *db* query)) params))
+        (handler-case
+            (apply #'dbi:execute (append (list (dbi:prepare *db* query)) params))
+          (dbi:<dbi-database-error> (e)
+            (if (= 1062 (slot-value e 'dbi.error::error-code))
+                (error 'insert-duplicate-error)
+                (error e))))
         ;; Get the last insert ID
         (nth 1 (dbi:fetch
-                (handler-case
-                    (dbi:execute
-                     (dbi:prepare *db* "SELECT LAST_INSERT_ID()"))
-                  (dbi.error:<dbi-database-error> (e)
-                    (if (= 1062 (slot-value e 'dbi.error::error-code))
-                        (error 'insert-duplicate-error)
-                        (error e))))))))))
+                (dbi:execute
+                 (dbi:prepare *db* "SELECT LAST_INSERT_ID()"))))))))
