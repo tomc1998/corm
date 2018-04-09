@@ -3,7 +3,12 @@
 ;; Connect to DB
 (defvar *db* (dbi:connect :mysql :database-name "test" :username "root" :password ""))
 
+
 ;; Some utils for names
+
+(defun to-mysql-value (v)
+  "Given a lisp value, convert it to a value suitable for storage in the db."
+  )
 
 (defun kebab-to-snake-case (name)
   "Convert the string from a string separated with '-' to a string separated with '_'"

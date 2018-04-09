@@ -4,9 +4,7 @@
 
 (prove:plan 1)
 (prove:is
- (generate-update-expressions
-  (make-instance 'update-test-entity :val-a 100 :val-b 200)
-  'val-a 'val-b)
+ (generate-update-expressions 'val-a 'val-b)
  "val_a = ?, val_b = ?"
  "Should generate update expressions correctly (i.e. X = ..., Y = ... etc.)"
  )

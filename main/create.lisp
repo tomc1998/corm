@@ -86,6 +86,14 @@
         (slot-names (loop for s in slots collect
                          `(,(car s) :initform NIL :initarg
                             ,(intern (string (car s)) :keyword)))))
+    ;; Insert into entity meta data
+    (push (make-instance 'entity-meta :fields
+                         (loop for s in slots collect
+                              (make-instance 'field-meta
+                                             :name (first s)
+                                             :type (second s))))
+          *entity-meta*)
+    (push name *entity-meta*)
     `(progn
        (if ,override (dbi:execute (dbi:prepare *db* (concatenate
                                                      'string "DROP TABLE IF EXISTS "
@@ -93,6 +101,7 @@
        (handler-case (dbi:execute (dbi:prepare *db* ,sql-def))
          (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
                         (error 'entity-already-exists) (error e))))
+       ;; Create class
        (defclass ,name ()
          ,(append
            (loop for p in parents collect

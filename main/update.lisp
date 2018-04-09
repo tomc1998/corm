@@ -1,6 +1,6 @@
 (in-package :corm)
 
-(defun generate-update-expressions (e &rest fields)
+(defun generate-update-expressions (&rest fields)
   "Generates the X = ?, X = ?, ... string given the entity e and the fields to
 update 'fields'."
   (format nil "~{~a = ?~^, ~}"
@@ -11,7 +11,7 @@ update 'fields'."
   "Generate some SQL to update the given entity's fields"
   (format nil "UPDATE ~a SET ~a WHERE id = ?"
           (kebab-to-snake-case (string (type-of e)))
-          (apply #'generate-update-expressions (append (list e) fields))))
+          (apply #'generate-update-expressions fields)))
 
 (defun update (e &rest fields)
   "Update the specified fields on a given entity. The entity's ID will be used
@@ -33,6 +33,8 @@ update 'fields'."
    Given that the entity's auto-increment ID was set to 1 on creation "
   (let ((sql (apply #'generate-update-sql (append (list e) fields))))
     (apply #'dbi:execute (append (list (dbi:prepare *db* sql))
-                                 (loop for f in fields collect (slot-value e f))
+                                 (loop for f in fields collect
+                                      (let ((v (slot-value e f)))
+                                        (if (typep v 'boolean) (if v 1 0) v)))
                                  (list (slot-value e 'id) )))
     ))
