@@ -7,7 +7,7 @@
  (generate-update-expressions
   (make-instance 'update-test-entity :val-a 100 :val-b 200)
   'val-a 'val-b)
- "val_a = 100, val_b = 200"
+ "val_a = ?, val_b = ?"
  "Should generate update expressions correctly (i.e. X = ..., Y = ... etc.)"
  )
 (prove:finalize)
@@ -17,7 +17,7 @@
  (generate-update-sql
   (make-instance 'update-test-entity :val-a 100 :val-b 200 :id 1)
   'val-a 'val-b)
- "UPDATE update_test_entity SET val_a = 100, val_b = 200 WHERE id = ?"
+ "UPDATE update_test_entity SET val_a = ?, val_b = ? WHERE id = ?"
  "Should generate update statement correctly")
 (prove:finalize)
 
