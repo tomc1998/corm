@@ -17,6 +17,7 @@
                (:file "main/create" :depends-on ("main/db"))
                (:file "main/select" :depends-on ("main/db"))
                (:file "main/insert" :depends-on ("main/db"))
+               (:file "main/update" :depends-on ("main/db"))
                (:file "main/main" :depends-on ("main/db"
                                                "main/create"
                                                "main/select"
@@ -27,6 +28,7 @@
   :depends-on (:corm :prove)
   :defsystem-depends-on (:prove-asdf)
   :components ((:test-file "test/main")
+               (:test-file "test/update")
                (:test-file "test/select"))
   )
 
