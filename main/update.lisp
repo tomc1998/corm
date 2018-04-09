@@ -33,8 +33,6 @@ update 'fields'."
    Given that the entity's auto-increment ID was set to 1 on creation "
   (let ((sql (apply #'generate-update-sql (append (list e) fields))))
     (apply #'dbi:execute (append (list (dbi:prepare *db* sql))
-                                 (loop for f in fields collect
-                                      (let ((v (slot-value e f)))
-                                        (if (is-slot-bool e f) (if v 1 0) v)))
+                                 (loop for f in fields collect (to-mysql-value e f))
                                  (list (slot-value e 'id) )))
     ))

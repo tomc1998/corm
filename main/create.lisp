@@ -71,7 +71,7 @@
 
   ;; First, loop & extract out the column definitions from the slots, and also
   ;; the slot names.
-  (let ((sql-def
+  (let* ((sql-def
          (concatenate
           'string
           "CREATE TABLE IF NOT EXISTS "
@@ -83,12 +83,21 @@
                   (cons " id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT"
                         (loop for s in slots collect (slot-to-column-def s))))
           ");"))
-        (slot-names (loop for s in slots collect
-                         `(,(car s) :initform NIL :initarg
-                            ,(intern (string (car s)) :keyword)))))
+        ;; Includes auto-gen slots
+        (all-slots
+         (append '((id "BIGINT UNSIGNED" "PRIMARY KEY" 'auto-increment))
+                 slots
+                 (loop for p in parents collect
+                      (let ((parent-symbol (format nil "PARENT-~a-ID" (string-upcase p))))
+                        (list (intern parent-symbol) "BIGINT UNSIGNED")))
+                 ))
+        (slot-names
+         (loop for s in all-slots collect
+              `(,(car s) :initarg
+                 ,(intern (string (car s)) :keyword)))))
     ;; Insert into entity meta data
     (push (make-instance 'entity-meta :fields
-                         (loop for s in slots collect
+                         (loop for s in all-slots collect
                               (make-instance 'field-meta
                                              :name (first s)
                                              :type (second s))))
@@ -102,11 +111,4 @@
          (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
                         (error 'entity-already-exists) (error e))))
        ;; Create class
-       (defclass ,name ()
-         ,(append
-           (loop for p in parents collect
-                (let ((parent-symbol (format nil "PARENT-~a-ID" (string-upcase p))))
-                  (list (intern parent-symbol) :initarg (intern parent-symbol :keyword)
-                        :initform NIL)))
-           (list '(id :initarg :id :initform NIL))
-           slot-names)))))
+       (defclass ,name () ,slot-names))))

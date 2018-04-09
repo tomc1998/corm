@@ -22,7 +22,7 @@
   (insert-one (make-entity :email \"a@a.a\"))"
 
   ;; First, get all the entity's slots as SQL column names. Skip nil values
-  (let ((slots (remove-if (lambda (a)  (eq (slot-value e a) nil))
+  (let ((slots (remove-if (lambda (a) (not (slot-boundp e a)))
                           (mapcar #'sb-mop:slot-definition-name
                                   (sb-mop:class-direct-slots (class-of e))))))
     (let ((columns (mapcar (lambda (s) (kebab-to-snake-case (string s))) slots))
@@ -31,7 +31,7 @@
       (let ((query (format nil "INSERT INTO ~a (~{~a~^,~}) VALUES(~:*~{~*?~^,~})"
                            table-name columns))
             (params (loop for c in slots collect
-                         (format nil "~a" (slot-value e c)))))
+                         (to-mysql-value e c))))
         ;; Actually query
         (handler-case
             (apply #'dbi:execute (append (list (dbi:prepare *db* query)) params))
