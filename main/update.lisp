@@ -35,6 +35,6 @@ update 'fields'."
     (apply #'dbi:execute (append (list (dbi:prepare *db* sql))
                                  (loop for f in fields collect
                                       (let ((v (slot-value e f)))
-                                        (if (typep v 'boolean) (if v 1 0) v)))
+                                        (if (is-slot-bool e f) (if v 1 0) v)))
                                  (list (slot-value e 'id) )))
     ))

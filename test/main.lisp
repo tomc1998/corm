@@ -12,6 +12,14 @@
             "Snake to kebab case conversion should work")
   (prove:is (snake-to-kebab-case "my-lisp-name") "my-lisp-name"
             "Snake to kebab case conversion should work")
+  (prove:finalize))
+
+(defun to-mysql-value-tests ()
+  (defentity value-test-entity ((some-val "VARCHAR(256)") (some-bool "TINYINT(1)")))
+  (prove:plan 2)
+  (let ((e (make-instance 'value-test-entity :some-val "hello" :some-bool t)))
+    (prove:is (to-mysql-value e 'some-val) "hello")
+    (prove:is (to-mysql-value e 'some-bool) 1))
   (prove:finalize)
   )
 
@@ -82,6 +90,7 @@
   (prove:finalize))
 
 (name-case-transform-tests)
+(to-mysql-value-tests)
 (sql-mod-from-keyword-tests)
 (column-def-tests)
 (defentity-tests)

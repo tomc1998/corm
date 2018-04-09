@@ -6,9 +6,13 @@
 
 ;; Some utils for names
 
-(defun to-mysql-value (v)
-  "Given a lisp value, convert it to a value suitable for storage in the db."
-  )
+(defun to-mysql-value (e slot)
+  "Given an entity and a slot name, convert it to a value ready to be put into
+params"
+  (let ((v (slot-value e slot)))
+    (if (is-slot-bool e slot) (if v 1 0)
+        v
+        )))
 
 (defun kebab-to-snake-case (name)
   "Convert the string from a string separated with '-' to a string separated with '_'"
