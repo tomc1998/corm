@@ -23,7 +23,7 @@
 (let ((e (make-instance 'update-test-entity :val-a 100)))
   (setf (slot-value e 'id) (insert-one e))
   (setf (slot-value e 'val-a) 200)
-  (update e 'val-a)
+  (update-entity e 'val-a)
   (let ((selected
          (select-tree '(update-test-entity ())
                       :where `(= (update-test-entity id)

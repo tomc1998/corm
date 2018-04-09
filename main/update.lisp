@@ -13,7 +13,7 @@ update 'fields'."
           (kebab-to-snake-case (string (type-of e)))
           (apply #'generate-update-expressions fields)))
 
-(defun update (e &rest fields)
+(defun update-entity (e &rest fields)
   "Update the specified fields on a given entity. The entity's ID will be used
   to select the entity, and changes in the fields will be applied according to
   the given entity.
