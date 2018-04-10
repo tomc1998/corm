@@ -7,6 +7,7 @@
              insert-duplicate-error
              update-entity
              delete-entity
+             delete-all
 
              is-slot-bool
 
