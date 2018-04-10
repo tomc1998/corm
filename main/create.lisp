@@ -24,7 +24,7 @@
 
 (define-condition entity-already-exists (condition) ())
 
-(defmacro defentity (name slots &optional parents override)
+(defmacro defentity (name slots &key parents override)
   "Define an entity with the given name. This macro creates a class with the
   entity of that name, and creates the appropriate corresponding persistence
   storage. You can create a new entity with the make-<name> function.

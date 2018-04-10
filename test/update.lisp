@@ -1,6 +1,6 @@
 (in-package :corm)
 
-(defentity update-test-entity ((val-a "INTEGER") (val-b "INTEGER")) () T)
+(defentity update-test-entity ((val-a "INTEGER") (val-b "INTEGER")) :override T)
 
 (prove:plan 1)
 (prove:is

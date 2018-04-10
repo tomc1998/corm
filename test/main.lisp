@@ -44,7 +44,7 @@
 
   ;; Test whether defentity works as expected
   (defentity test-entity
-      ((name "VARCHAR(256)" :not-null :unique)) () T)
+      ((name "VARCHAR(256)" :not-null :unique)) :override T)
   (let ((instance (make-instance 'test-entity :name "Tom")))
     (prove:ok instance
               "Test entity structure should have a defined constructor")
@@ -56,13 +56,13 @@
 
   ;; Test override def
   (defentity test-entity
-      ((email "VARCHAR(1024)" :not-null)) () T)
+      ((email "VARCHAR(1024)" :not-null)) :override T)
   (prove:ok (make-instance 'test-entity :email "a@a.a"))
   (prove:is (slot-value (make-instance 'test-entity :email "a@a.a") 'email) "a@a.a")
 
   ;; Test defentity child
   (defentity test-entity-child
-      ((some-data "VARCHAR(2048)" :not-null)) (test-entity) T)
+      ((some-data "VARCHAR(2048)" :not-null)) :parents (test-entity) :override T)
 
   (prove:finalize))
 
@@ -77,7 +77,7 @@
 
 (defun duplicate-key-tests ()
   (defentity dup-test-entity
-      ((email "VARCHAR(1024)" :not-null :unique)) () T)
+      ((email "VARCHAR(1024)" :not-null :unique)) :override T)
   (prove:plan 3)
   (prove:is (insert-one (make-instance 'dup-test-entity :email "asd")) 1)
   (prove:is (handler-case (insert-one (make-instance 'dup-test-entity :email "asd"))

@@ -20,16 +20,16 @@
 
 (defun build-sql-column-spec-tests ()
   (prove:plan 1)
-  (defentity select-test-entity ((email "VARCHAR(256)" :not-null)) ())
+  (defentity select-test-entity ((email "VARCHAR(256)" :not-null)))
   (prove:is (build-sql-column-spec-from-entity 'select-test-entity "0")
             "0_select_test_entity.id AS 0_id, 0_select_test_entity.email AS 0_email")
   (prove:finalize))
 
 (defun build-join-list-test ()
   (prove:plan 1)
-  (defentity user ((email "VARCHAR(256)" 'not-null)) () T)
-  (defentity post ((body "VARCHAR(256)" 'not-null)) (user) T)
-  (defentity comment ((body "VARCHAR(256)" 'not-null)) (post) T)
+  (defentity user ((email "VARCHAR(256)" 'not-null)) :override T)
+  (defentity post ((body "VARCHAR(256)" 'not-null)) :parents (user) :override T)
+  (defentity comment ((body "VARCHAR(256)" 'not-null)) :parents (post) :override T)
   (prove:is (build-join-list-from-visit-list '(user ((post ((comment ()))))))
             "
 LEFT JOIN post AS 1_post ON 1_post.parent_user_id = 0_user.id

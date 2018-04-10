@@ -1,6 +1,6 @@
 (in-package :corm)
 
-(defentity delete-entity-test ((some-val "INTEGER")) () T)
+(defentity delete-entity-test ((some-val "INTEGER")) :override T)
 
 (let ((e (make-instance 'delete-entity-test)))
   (prove:plan 2)
