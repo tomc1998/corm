@@ -8,6 +8,7 @@
              update-entity
              delete-entity
              delete-all
+             check-owner-eq
 
              is-slot-bool
 

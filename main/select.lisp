@@ -1,5 +1,7 @@
 (in-package :corm)
 
+(define-condition entity-not-found-error (error) ())
+
 (defun entity-from-row (e p r)
   "Given an entity, prefix, and row, extract the data from the row with
 the given prefix and inserts the data into the entity of the given type. For convenience, returns e."
@@ -184,3 +186,14 @@ entity in the car, 2nd item is a list of children)"
      (lambda (s)
        (string-equal (string (car visit-list))
                      (string (type-of (car s))))) e-list)))
+
+(defun check-owner-eq (e parent expected)
+  "Convenience method to check the parent value of a given entity. Given an
+  entity e (which has the slot 'id' bound properly), fetch the parent ID from
+  the db and check whether it's equal to 'expected'. Returns t if it is, nil if
+  it isn't, and raises 'entity-not-found-error' if not found."
+  (let ((tree (select-tree `(,(type-of e) ()) :where `(= ,(slot-value e 'id) (,(type-of e) id)))))
+    (if (not tree) (error 'entity-not-found-error))
+    (let ((fetched (caar tree))
+          (parent-symbol (intern (format nil "PARENT-~a-ID" parent))))
+      (eq (slot-value fetched parent-symbol) expected))))

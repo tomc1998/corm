@@ -56,9 +56,28 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
     (prove:is (length tree) 2))
   (prove:finalize))
 
+(defun check-owner-eq-tests ()
+  (defentity user ((email "VARCHAR(256)" 'not-null)) :override T)
+  (defentity post ((body "VARCHAR(256)" 'not-null)) :parents (user) :override T)
+  (let* (
+        (u0 (make-instance 'user :id 100))
+        (u1 (make-instance 'user :id 101))
+        (p0 (make-instance 'post :id 1 :parent-user-id 100))
+        (p1 (make-instance 'post :id 2 :parent-user-id 101)))
+    (insert-one u0)
+    (insert-one u1)
+    (insert-one p0)
+    (insert-one p1)
+    (prove:ok (check-owner-eq p0 'user (slot-value u0 'id)) "check-owner-eq should return t")
+    (prove:ok (check-owner-eq p1 'user (slot-value u1 'id)) "check-owner-eq should return t")
+    (prove:is (check-owner-eq p1 'user (slot-value u0 'id)) nil "check-owner-eq should return nil")
+    (prove:is (check-owner-eq p0 'user (slot-value u1 'id)) nil "check-owner-eq should return nil")
+    ))
+
 (generate-where-clause-tests)
 (build-visit-list-tests)
 (build-sql-column-spec-tests)
 (build-join-list-test)
 
 (select-tree-tests)
+(check-owner-eq-tests)
