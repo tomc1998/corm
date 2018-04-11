@@ -191,7 +191,9 @@ entity in the car, 2nd item is a list of children)"
   "Convenience method to check the parent value of a given entity. Given an
   entity e (which has the slot 'id' bound properly), fetch the parent ID from
   the db and check whether it's equal to 'expected'. Returns t if it is, nil if
-  it isn't, and raises 'entity-not-found-error' if not found."
+  it isn't, and raises 'entity-not-found-error' if not found. The 'parent'
+  parameter should be the parent id symbol - for example, 'parent-user-id if you
+  have an entity where you set the symbol 'user as the parent."
   (let ((tree (select-tree `(,(type-of e) ()) :where `(= ,(slot-value e 'id) (,(type-of e) id)))))
     (if (not tree) (error 'entity-not-found-error))
     (let ((fetched (caar tree)))
