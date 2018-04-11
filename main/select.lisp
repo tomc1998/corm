@@ -194,6 +194,5 @@ entity in the car, 2nd item is a list of children)"
   it isn't, and raises 'entity-not-found-error' if not found."
   (let ((tree (select-tree `(,(type-of e) ()) :where `(= ,(slot-value e 'id) (,(type-of e) id)))))
     (if (not tree) (error 'entity-not-found-error))
-    (let ((fetched (caar tree))
-          (parent-symbol (intern (format nil "PARENT-~a-ID" parent))))
-      (eq (slot-value fetched parent-symbol) expected))))
+    (let ((fetched (caar tree)))
+      (eq (slot-value fetched parent) expected))))
