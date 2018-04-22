@@ -42,7 +42,7 @@
                 (error e))))
         ;; Get the last insert ID if it wasn't specified, otherwise just return
         ;; the specified id
-        (if (slot-boundp e 'id)
+        (if (and (slot-boundp e 'id) (slot-value e 'id))
             (slot-value e 'id)
             (nth 1 (dbi:fetch
                     (dbi:execute
