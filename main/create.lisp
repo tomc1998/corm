@@ -104,10 +104,10 @@
           *entity-meta*)
     (push name *entity-meta*)
     `(progn
-       (if ,override (dbi:execute (dbi:prepare *db* (concatenate
+       (if ,override (dbi:execute (dbi:prepare (get-conn) (concatenate
                                                      'string "DROP TABLE IF EXISTS "
                                                      ,(kebab-to-snake-case (string name))))))
-       (handler-case (dbi:execute (dbi:prepare *db* ,sql-def))
+       (handler-case (dbi:execute (dbi:prepare (get-conn) ,sql-def))
          (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
                         (error 'entity-already-exists) (error e))))
        ;; Create class

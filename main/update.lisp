@@ -32,7 +32,7 @@ update 'fields'."
    UPDATE my_entity SET some_field = 20 WHERE my_entity.id = 1;
    Given that the entity's auto-increment ID was set to 1 on creation "
   (let ((sql (apply #'generate-update-sql (append (list e) fields))))
-    (apply #'dbi:execute (append (list (dbi:prepare *db* sql))
+    (apply #'dbi:execute (append (list (dbi:prepare (get-conn) sql))
                                  (loop for f in fields collect (to-mysql-value e f))
                                  (list (slot-value e 'id) )))
     ))

@@ -22,7 +22,8 @@
   (insert-one (make-entity :email \"a@a.a\"))"
 
   ;; First, get all the entity's slots as SQL column names. Skip nil values
-  (let ((slots (remove-if (lambda (a) (not (slot-boundp e a)))
+  (let ((db (get-conn))
+        (slots (remove-if (lambda (a) (not (slot-boundp e a)))
                           (mapcar #'sb-mop:slot-definition-name
                                   (sb-mop:class-direct-slots (class-of e))))))
     (let ((columns (mapcar (lambda (s) (kebab-to-snake-case (string s))) slots))
@@ -34,12 +35,15 @@
                          (to-mysql-value e c))))
         ;; Actually query
         (handler-case
-            (apply #'dbi:execute (append (list (dbi:prepare *db* query)) params))
+            (apply #'dbi:execute (append (list (dbi:prepare db query)) params))
           (dbi:<dbi-database-error> (e)
             (if (= 1062 (slot-value e 'dbi.error::error-code))
                 (error 'insert-duplicate-error)
                 (error e))))
-        ;; Get the last insert ID
-        (nth 1 (dbi:fetch
-                (dbi:execute
-                 (dbi:prepare *db* "SELECT LAST_INSERT_ID()"))))))))
+        ;; Get the last insert ID if it wasn't specified, otherwise just return
+        ;; the specified id
+        (if (slot-boundp e 'id)
+            (slot-value e 'id)
+            (nth 1 (dbi:fetch
+                    (dbi:execute
+                     (dbi:prepare db "SELECT LAST_INSERT_ID()")))))))))

@@ -15,7 +15,7 @@
   (prove:finalize))
 
 (defun to-mysql-value-tests ()
-  (defentity value-test-entity ((some-val "VARCHAR(256)") (some-bool "TINYINT(1)")))
+  (defentity value-test-entity ((some-val "VARCHAR(256)") (some-bool "TINYINT(1)")) :override t)
   (prove:plan 2)
   (let ((e (make-instance 'value-test-entity :some-val "hello" :some-bool t)))
     (prove:is (to-mysql-value e 'some-val) "hello")
@@ -67,12 +67,14 @@
   (prove:finalize))
 
 (defun insert-one-tests ()
+  (defentity test-entity
+      ((email "VARCHAR(1024)" :not-null)) :override T)
   (prove:plan 2)
   (prove:is (insert-one (make-instance 'test-entity :email "a@a.a")) 1
             "Inserting should return the proper auto-insert ID")
-  (prove:is (insert-one (make-instance 'test-entity :id 234 :email "b@b.b")) 1
-            "Inserting should return the old value of last insert ID if the ID
-            of the entity was specified")
+  (prove:is (insert-one (make-instance 'test-entity :id 234 :email "b@b.b")) 234
+            "Inserting should return the ID if the ID of the entity was
+            specified")
   (prove:finalize))
 
 (defun duplicate-key-tests ()
