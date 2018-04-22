@@ -89,7 +89,7 @@
                  slots
                  (loop for p in parents collect
                       (let ((parent-symbol (format nil "PARENT-~a-ID" (string-upcase p))))
-                        (list (intern parent-symbol) "BIGINT UNSIGNED")))
+                        (list (intern parent-symbol :corm) "BIGINT UNSIGNED")))
                  ))
         (slot-names
          (loop for s in all-slots collect
