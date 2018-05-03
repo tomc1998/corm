@@ -37,6 +37,7 @@
   :defsystem-depends-on (:prove-asdf)
   :components ((:test-file "test/main")
                (:test-file "test/create")
+               (:test-file "test/insert")
                (:test-file "test/update")
                (:test-file "test/meta")
                (:test-file "test/delete")
