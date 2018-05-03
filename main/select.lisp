@@ -42,6 +42,29 @@ entity's slots as columns"
             (loop for s in slots collect
                  (format nil "~a_~a.~a AS ~a_~a" p table-name s p s)))))
 
+(defun build-join-from-entities (p0 p1 e0 e1)
+  "Build join clause from 2 entities and prefixes. Takes into account m2m
+joins."
+  (let* ((e0-name (kebab-to-snake-case (string e0)))
+         (e1-name (kebab-to-snake-case (string e1)))
+         (is-m2m (member e1 (getf *m2m-meta* e0)))
+         (m2m-table (format nil "~a_~a" e0-name e1-name)))
+    ;; If this join is a m2m join, we need to generate a
+    ;; more complex 'double' join to the intermediate table
+    (if is-m2m
+        (format nil
+                (concatenate
+                 'string
+                 "INNER JOIN ~a ON ~a.~a_id = ~a_~a.id "
+                 "INNER JOIN ~a AS ~a_~a ON ~a.~a_id = ~a_~a.id")
+                m2m-table m2m-table e0-name p0 e0-name
+                e1-name p1 e1-name m2m-table e1-name p1 e1-name)
+        (format nil "LEFT JOIN ~a AS ~a_~a ON ~a_~a.parent_~a_id = ~a_~a.id"
+                e1-name p1 e1-name
+                p1 e1-name e0-name p0 e0-name))
+    )
+  )
+
 (defun build-join-list-from-visit-list (tree)
   "Given a select tree, create a string containing left joins for all the items
 in the tree, other than the root element"
@@ -50,14 +73,10 @@ in the tree, other than the root element"
        do (let ((parent-p (- p 1)) (curr-item (pop curr-list)))
             (loop for n in (cadr curr-item) do
                  (push n curr-list)
-               ;; Get this table's parent & child names
-                 (let* ((parent-name (kebab-to-snake-case (string (car curr-item))))
-                        (child-name (kebab-to-snake-case (string (car n))))
-                        ;; Create left join text with big ugly format, this works i promise
-                        (join (format nil "LEFT JOIN ~a AS ~a_~a ON ~a_~a.parent_~a_id = ~a_~a.id"
-                                      child-name p child-name
-                                      p child-name parent-name parent-p parent-name)))
-                   (setf str (format nil "~a~%~a" str join)))
+                 (setf str
+                       (format nil "~a~%~a" str
+                               (build-join-from-entities
+                                parent-p p (car curr-item) (car n))))
                  (setf p (+ p 1)))))
     str))
 
@@ -96,26 +115,26 @@ entity in the car, 2nd item is a list of children)"
     (the sql query) and the cdr is the list of arguments."
   (let ((args ()))
     (labels ((inner (where)
-             ;; If where isn't a list, assume this is an argument.
-             (if (not (listp where))
-                 (progn
-                   (push where args)
-                   (return-from inner "?")))
-             (cond
-               ;; Process unary operations
-               ((member (car where) '(not))
-                (format nil "(~a ~a)"
-                        (write-to-string (car where))
-                        (inner (second where))))
-               ;; Process binary operations
-               ((member (car where) '(= and or is like > >= < <= != sounds-like rlike - + * /))
-                (format nil "(~a ~a ~a)"
-                        (inner (second where))
-                        (write-to-string (car where))
-                        (inner (third where))))
-               ;; Assume we're going for a 'dotted access (i.e. 'user.id')'
-               (t (kebab-to-snake-case (format nil "~a_~a.~a" (position (car where) visit-list)
-                                               (car where) (second where)))))))
+               ;; If where isn't a list, assume this is an argument.
+               (if (not (listp where))
+                   (progn
+                     (push where args)
+                     (return-from inner "?")))
+               (cond
+                 ;; Process unary operations
+                 ((member (car where) '(not))
+                  (format nil "(~a ~a)"
+                          (write-to-string (car where))
+                          (inner (second where))))
+                 ;; Process binary operations
+                 ((member (car where) '(= and or is like > >= < <= != sounds-like rlike - + * /))
+                  (format nil "(~a ~a ~a)"
+                          (inner (second where))
+                          (write-to-string (car where))
+                          (inner (third where))))
+                 ;; Assume we're going for a 'dotted access (i.e. 'user.id')'
+                 (t (kebab-to-snake-case (format nil "~a_~a.~a" (position (car where) visit-list)
+                                                 (car where) (second where)))))))
       ;; Create an inner function to allow recursive calls with over-arching state via closure
       (cons (inner where) (reverse args)))))
 
@@ -139,7 +158,17 @@ entity in the car, 2nd item is a list of children)"
   (<user object> ()))
 
   This represents 2 users, one who owns 2 posts (one of which has 1 comment),
-  and another user with no posts."
+  and another user with no posts.
+
+  # Regarding many-to-many joins
+  m2m joins are done automatically, given that an m2m join between the two
+  tables has already been generated. For example,
+
+  (def-many-to-many my-entity-1 my-entity-2)
+  (select-tree '(my-entity-1 ((my-entity-2 ())))
+
+  will perform the join accordingly to an intermediate table.
+"
 
   ;; First, we need to generate the query string. We'll alias the column results
   ;; with a number based on their position in a deterministic traversal of the

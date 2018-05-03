@@ -25,6 +25,20 @@
             "0_select_test_entity.id AS 0_id, 0_select_test_entity.email AS 0_email")
   (prove:finalize))
 
+(defun build-join-from-entities-test ()
+  (prove:plan 2)
+  (def-many-to-many my-e-0 my-e-1)
+  (prove:is (build-join-from-entities 0 1 'my-e-0 'my-e-1)
+            (concatenate
+             'string
+             "INNER JOIN my_e_0_my_e_1 ON my_e_0_my_e_1.my_e_0_id = 0_my_e_0.id"
+             " "
+             "INNER JOIN my_e_1 AS 1_my_e_1 ON my_e_0_my_e_1.my_e_1_id = 1_my_e_1.id"
+             ))
+  (prove:is (build-join-from-entities 0 1 'e0 'e1)
+            "LEFT JOIN e1 AS 1_e1 ON 1_e1.parent_e0_id = 0_e0.id")
+  (prove:finalize))
+
 (defun build-join-list-test ()
   (prove:plan 1)
   (defentity user ((email "VARCHAR(256)" 'not-null)) :override T)
@@ -77,6 +91,7 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
 (generate-where-clause-tests)
 (build-visit-list-tests)
 (build-sql-column-spec-tests)
+(build-join-from-entities-test)
 (build-join-list-test)
 
 (select-tree-tests)

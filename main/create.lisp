@@ -40,11 +40,18 @@ PRIMARY KEY (~a_id, ~a_id));"
 
 (defmacro def-many-to-many (e0 e1)
   "Given two entities, e0 and e1, define a many to many relationship."
-  (let ((sql (gen-many-to-many-def e0 e1)))
-    (push e1 (getf *m2m-meta* e0))
-    (push e0 (getf *m2m-meta* e1))
-    (setf (getf *m2m-meta* e0) (delete-duplicates (getf *m2m-meta* e0)))
-    (setf (getf *m2m-meta* e1) (delete-duplicates (getf *m2m-meta* e1)))
+  (let* ((e0-name (kebab-to-snake-case (string e0)))
+        (e1-name (kebab-to-snake-case (string e1)))
+        (table-name (format nil "~a_~a" e0-name e1-name))
+        (sql (gen-many-to-many-def e0 e1)))
+    (if (not (getf *m2m-meta* e0))
+        (setf (getf *m2m-meta* e0) (list e1 table-name))
+        (setf (getf (getf *m2m-meta* e0) e1) table-name)
+        )
+    (if (not (getf *m2m-meta* e1))
+        (setf (getf *m2m-meta* e1) (list e0 table-name))
+        (setf (getf (getf *m2m-meta* e1) e0) table-name)
+        )
     `(dbi:execute (dbi:prepare (get-conn) ,sql))))
 
 (defmacro defentity (name slots &key parents override)

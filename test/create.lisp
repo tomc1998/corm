@@ -10,6 +10,6 @@ PRIMARY KEY (my_entity_1_id, my_entity_2_id));")
 
 (prove:plan 1)
 (def-many-to-many my-entity-1 my-entity-2)
-(prove:is (getf *m2m-meta* 'my-entity-1) '(my-entity-2))
-(prove:is (getf *m2m-meta* 'my-entity-2) '(my-entity-1))
+(prove:is (getf *m2m-meta* 'my-entity-1) '(my-entity-2 "my_entity_1_my_entity_2"))
+(prove:is (getf *m2m-meta* 'my-entity-2) '(my-entity-1 "my_entity_1_my_entity_2"))
 (prove:finalize)
