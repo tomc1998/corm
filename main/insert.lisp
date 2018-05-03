@@ -55,7 +55,7 @@
          (e0-sql-name (kebab-to-snake-case (string e0-name)))
          (e1-sql-name (kebab-to-snake-case (string e1-name)))
          )
-    (if (and (not (getf *m2m-meta* e0-name))
+    (if (or (not (getf *m2m-meta* e0-name))
              (not (getf (getf *m2m-meta* e0-name) e1-name)))
         (error "Tried to call connect with 2 entities that are not joined in a m2m
       relationship. Maybe have a look at func def-many-to-many?"))
