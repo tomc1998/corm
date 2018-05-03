@@ -38,12 +38,19 @@
 PRIMARY KEY (~a_id, ~a_id));"
             table-name field-1 field-2 this-name other-name)))
 
-(defmacro def-many-to-many (e0 e1)
+(defmacro def-many-to-many (e0 e1 &key override)
   "Given two entities, e0 and e1, define a many to many relationship."
   (let* ((e0-name (kebab-to-snake-case (string e0)))
-        (e1-name (kebab-to-snake-case (string e1)))
-        (table-name (format nil "~a_~a" e0-name e1-name))
-        (sql (gen-many-to-many-def e0 e1)))
+         (e1-name (kebab-to-snake-case (string e1)))
+         ;; If this relationship has been made in the past, try and fetch the
+         ;; previous table name to override it.
+         (prev-table-name
+          (if (and (member e0 *m2m-meta*)
+                   (member e1 (getf *m2m-meta* e0)))
+              (getf (getf *m2m-meta* e0) e1)))
+         (table-name (if prev-table-name prev-table-name
+                         (format nil "~a_~a" e0-name e1-name)))
+         (sql (gen-many-to-many-def e0 e1)))
     (if (not (getf *m2m-meta* e0))
         (setf (getf *m2m-meta* e0) (list e1 table-name))
         (setf (getf (getf *m2m-meta* e0) e1) table-name)
@@ -52,7 +59,11 @@ PRIMARY KEY (~a_id, ~a_id));"
         (setf (getf *m2m-meta* e1) (list e0 table-name))
         (setf (getf (getf *m2m-meta* e1) e0) table-name)
         )
-    `(dbi:execute (dbi:prepare (get-conn) ,sql))))
+    `(progn
+       ,(if override `(dbi:execute
+                       (dbi:prepare (get-conn)
+                                    (format nil "DROP TABLE ~a" ,table-name))))
+       (dbi:execute (dbi:prepare (get-conn) ,sql)))))
 
 (defmacro defentity (name slots &key parents override)
   "Define an entity with the given name. This macro creates a class with the

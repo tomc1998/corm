@@ -73,7 +73,7 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
 (defun m2m-select-tree-tests ()
   (defentity test-select-m2m-e0 () :override t)
   (defentity test-select-m2m-e1 () :override t)
-  (def-many-to-many test-select-m2m-e0 test-select-m2m-e1)
+  (def-many-to-many test-select-m2m-e0 test-select-m2m-e1 :override t)
   (let ((e0 (make-instance 'test-select-m2m-e0))
         (e1 (make-instance 'test-select-m2m-e1)))
     (setf (slot-value e0 'id) (insert-one e0))
