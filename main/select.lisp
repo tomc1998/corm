@@ -48,15 +48,16 @@ joins."
   (let* ((e0-name (kebab-to-snake-case (string e0)))
          (e1-name (kebab-to-snake-case (string e1)))
          (is-m2m (member e1 (getf *m2m-meta* e0)))
-         (m2m-table (format nil "~a_~a" e0-name e1-name)))
+         (m2m-table (getf (getf *m2m-meta* e0) e1)))
     ;; If this join is a m2m join, we need to generate a
     ;; more complex 'double' join to the intermediate table
+    (print m2m-table)
     (if is-m2m
         (format nil
                 (concatenate
                  'string
-                 "INNER JOIN ~a ON ~a.~a_id = ~a_~a.id "
-                 "INNER JOIN ~a AS ~a_~a ON ~a.~a_id = ~a_~a.id")
+                 "LEFT JOIN ~a ON ~a.~a_id = ~a_~a.id "
+                 "LEFT JOIN ~a AS ~a_~a ON ~a.~a_id = ~a_~a.id")
                 m2m-table m2m-table e0-name p0 e0-name
                 e1-name p1 e1-name m2m-table e1-name p1 e1-name)
         (format nil "LEFT JOIN ~a AS ~a_~a ON ~a_~a.parent_~a_id = ~a_~a.id"

@@ -30,10 +30,10 @@
   (def-many-to-many my-e-0 my-e-1)
   (prove:is (build-join-from-entities 0 1 'my-e-0 'my-e-1)
             (concatenate
-             'string
-             "INNER JOIN my_e_0_my_e_1 ON my_e_0_my_e_1.my_e_0_id = 0_my_e_0.id"
+            'string
+             "LEFT JOIN my_e_0_my_e_1 ON my_e_0_my_e_1.my_e_0_id = 0_my_e_0.id"
              " "
-             "INNER JOIN my_e_1 AS 1_my_e_1 ON my_e_0_my_e_1.my_e_1_id = 1_my_e_1.id"
+             "LEFT JOIN my_e_1 AS 1_my_e_1 ON my_e_0_my_e_1.my_e_1_id = 1_my_e_1.id"
              ))
   (prove:is (build-join-from-entities 0 1 'e0 'e1)
             "LEFT JOIN e1 AS 1_e1 ON 1_e1.parent_e0_id = 0_e0.id")
@@ -70,6 +70,20 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
     (prove:is (length tree) 2))
   (prove:finalize))
 
+(defun m2m-select-tree-tests ()
+  (defentity test-select-m2m-e0 () :override t)
+  (defentity test-select-m2m-e1 () :override t)
+  (def-many-to-many test-select-m2m-e0 test-select-m2m-e1)
+  (let ((e0 (make-instance 'test-select-m2m-e0))
+        (e1 (make-instance 'test-select-m2m-e1)))
+    (setf (slot-value e0 'id) (insert-one e0))
+    (setf (slot-value e1 'id) (insert-one e1))
+    (connect e0 e1)
+    (prove:ok (select-tree '(test-select-m2m-e0 ((test-select-m2m-e1 ())))))
+    (prove:ok (select-tree '(test-select-m2m-e1 ((test-select-m2m-e0 ())))))
+    )
+  )
+
 (defun check-owner-eq-tests ()
   (defentity user ((email "VARCHAR(256)" 'not-null)) :override T)
   (defentity post ((body "VARCHAR(256)" 'not-null)) :parents (user) :override T)
@@ -95,4 +109,5 @@ LEFT JOIN comment AS 2_comment ON 2_comment.parent_post_id = 1_post.id"
 (build-join-list-test)
 
 (select-tree-tests)
+(m2m-select-tree-tests)
 (check-owner-eq-tests)

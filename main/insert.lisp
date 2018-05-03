@@ -49,12 +49,10 @@
                      (dbi:prepare db "SELECT LAST_INSERT_ID()")))))))))
 
 (defun gen-connect-sql (e0 e1)
-  (let* (
-         (e0-name (type-of e0))
+  (let* ((e0-name (type-of e0))
          (e1-name (type-of e1))
          (e0-sql-name (kebab-to-snake-case (string e0-name)))
-         (e1-sql-name (kebab-to-snake-case (string e1-name)))
-         )
+         (e1-sql-name (kebab-to-snake-case (string e1-name))))
     (if (or (not (getf *m2m-meta* e0-name))
              (not (getf (getf *m2m-meta* e0-name) e1-name)))
         (error "Tried to call connect with 2 entities that are not joined in a m2m
