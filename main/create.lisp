@@ -24,6 +24,29 @@
 
 (define-condition entity-already-exists (condition) ())
 
+(defun gen-many-to-many-def (this other)
+  "Given two entity symbols, generate sql to create a many-to-many table join"
+  (let* ((this-name (kebab-to-snake-case (string this)))
+         (other-name (kebab-to-snake-case (string other)))
+         (table-name (format nil "~a_~a" this-name other-name))
+         (field-1 (format nil "~a_id BIGINT UNSIGNED NOT NULL" this-name))
+         (field-2 (format nil "~a_id BIGINT UNSIGNED NOT NULL" other-name))
+         )
+    (format nil "CREATE TABLE IF NOT EXISTS ~a (
+~a,
+~a,
+PRIMARY KEY (~a_id, ~a_id));"
+            table-name field-1 field-2 this-name other-name)))
+
+(defmacro def-many-to-many (e0 e1)
+  "Given two entities, e0 and e1, define a many to many relationship."
+  (let ((sql (gen-many-to-many-def e0 e1)))
+    (push e1 (getf *m2m-meta* e0))
+    (push e0 (getf *m2m-meta* e1))
+    (setf (getf *m2m-meta* e0) (delete-duplicates (getf *m2m-meta* e0)))
+    (setf (getf *m2m-meta* e1) (delete-duplicates (getf *m2m-meta* e1)))
+    `(dbi:execute (dbi:prepare (get-conn) ,sql))))
+
 (defmacro defentity (name slots &key parents override)
   "Define an entity with the given name. This macro creates a class with the
   entity of that name, and creates the appropriate corresponding persistence
@@ -56,15 +79,16 @@
   (defentity user
       ;; Slots
       ((first-name \"VARCHAR (256)\" :not-null)
-      (last-name \"VARCHAR (256)\" :not-null))
-      ;; Parents (none)
-      ())
+      (last-name \"VARCHAR (256)\" :not-null)))
   ;; Define a child 'post' entity
   (defentity post
       ;; Slots
       (body \"VARCHAR (2048)\" :not-null)
-      ;; Parents
-      (user))
+      :parents (user))
+
+  # Many to many joins
+  Many to many relationships can be expressed too, using the def-many-to-many
+  macro.
 
   An optional 'override' argument can be set to T to drop the SQL table before
   re-creating it."
@@ -72,43 +96,43 @@
   ;; First, loop & extract out the column definitions from the slots, and also
   ;; the slot names.
   (let* ((sql-def
-         (concatenate
-          'string
-          "CREATE TABLE IF NOT EXISTS "
-          (kebab-to-snake-case (string name))
-          " ("
-          (format nil "~{parent_~a_id BIGINT UNSIGNED,~%~}"
-                  (mapcar (lambda (s) (kebab-to-snake-case (string s))) parents))
-          (reduce (lambda (s0 s1) (format nil "~a,~%~a" s0 s1))
-                  (cons " id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT"
-                        (loop for s in slots collect (slot-to-column-def s))))
-          ");"))
-        ;; Includes auto-gen slots
-        (all-slots
-         (append '((id "BIGINT UNSIGNED" "PRIMARY KEY" 'auto-increment))
-                 slots
-                 (loop for p in parents collect
-                      (let ((parent-symbol (format nil "PARENT-~a-ID" (string-upcase p))))
-                        (list (intern parent-symbol :corm) "BIGINT UNSIGNED")))
-                 ))
-        (slot-names
-         (loop for s in all-slots collect
-              `(,(car s) :initarg
-                 ,(intern (string (car s)) :keyword)))))
+          (concatenate
+           'string
+           "CREATE TABLE IF NOT EXISTS "
+           (kebab-to-snake-case (string name))
+           " ("
+           (format nil "~{parent_~a_id BIGINT UNSIGNED,~%~}"
+                   (mapcar (lambda (s) (kebab-to-snake-case (string s))) parents))
+           (reduce (lambda (s0 s1) (format nil "~a,~%~a" s0 s1))
+                   (cons " id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT"
+                         (loop for s in slots collect (slot-to-column-def s))))
+           ");"))
+         ;; Includes auto-gen slots
+         (all-slots
+          (append '((id "BIGINT UNSIGNED" "PRIMARY KEY" 'auto-increment))
+                  slots
+                  (loop for p in parents collect
+                       (let ((parent-symbol (format nil "PARENT-~a-ID" (string-upcase p))))
+                         (list (intern parent-symbol :corm) "BIGINT UNSIGNED")))
+                  ))
+         (slot-names
+          (loop for s in all-slots collect
+               `(,(car s) :initarg
+                  ,(intern (string (car s)) :keyword)))))
     ;; Insert into entity meta data
-    (push (make-instance 'entity-meta :fields
+    (setf (getf *entity-meta* name)
+          (make-instance 'entity-meta :fields
                          (loop for s in all-slots collect
                               (make-instance 'field-meta
                                              :name (first s)
-                                             :type (second s))))
-          *entity-meta*)
-    (push name *entity-meta*)
+                                             :type (second s)))))
     `(progn
        (if ,override (dbi:execute (dbi:prepare (get-conn) (concatenate
-                                                     'string "DROP TABLE IF EXISTS "
-                                                     ,(kebab-to-snake-case (string name))))))
+                                                           'string "DROP TABLE IF EXISTS "
+                                                           ,(kebab-to-snake-case (string name))))))
        (handler-case (dbi:execute (dbi:prepare (get-conn) ,sql-def))
          (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
                         (error 'entity-already-exists) (error e))))
        ;; Create class
-       (defclass ,name () ,slot-names))))
+       (defclass ,name () ,slot-names)))
+  )

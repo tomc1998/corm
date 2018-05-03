@@ -5,7 +5,9 @@
 (defvar *curr-conn-ix*)
 
 (defun create-pool (size)
-  (setf *pool* (loop for i from 0 to size collect (dbi:connect :mysql :database-name "test" :username "root" :password "")))
+  (setf *pool* (loop for i from 0 to size collect
+                    (dbi:connect :mysql :database-name "test"
+                                 :username "root" :password "")))
   (setf *curr-conn-ix* 0))
 
 (create-pool 10)
