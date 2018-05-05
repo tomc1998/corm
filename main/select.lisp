@@ -51,7 +51,6 @@ joins."
          (m2m-table (getf (getf *m2m-meta* e0) e1)))
     ;; If this join is a m2m join, we need to generate a
     ;; more complex 'double' join to the intermediate table
-    (print m2m-table)
     (if is-m2m
         (format nil
                 (concatenate
@@ -81,35 +80,6 @@ in the tree, other than the root element"
                  (setf p (+ p 1)))))
     str))
 
-(defun add-to-parents (e-list e-node)
-  "Add the given entity e to all the entities in the list e-list where e is the
-child of the entity in e-list. The e-list is a list of entity nodes, (i.e. an
-entity in the car, 2nd item is a list of children)"
-  (let* ((e (car e-node))
-         (slots (mapcar #'sb-mop:slot-definition-name
-                        (sb-mop:class-direct-slots (class-of e))))
-         (parent-slots
-          (remove-if-not (lambda (s)
-                           (let ((s (string s))) (and
-                                                  (> (length s) 10)
-                                                  (string-equal "-ID" (subseq s (- (length s) 3)))
-                                                  (string-equal "PARENT-" (subseq s 0 7)))))
-                         slots))
-         ;; Names of the parents (just strip the 'parent-' and the '-id' from
-         ;; the start and end of the string)
-         (parent-names (mapcar (lambda (s)
-                                 (subseq (string s) 7 (- (length (string s)) 3)))
-                               parent-slots)))
-    (loop for s in parent-slots for n in parent-names do
-         (let* ((parent-id (slot-value e s))
-                (parent (find-if
-                         (lambda (_e)
-                           (and
-                            (string-equal (type-of (car _e)) n)
-                            (= parent-id (slot-value (car _e) 'id))))
-                         e-list)))
-           (if parent (push e-node (cadr parent)))))))
-
 (defun generate-where-clause (visit-list where)
   "Given a visit list and the where clause, generate a SQL where clause and a
     list of arguments. These are returned as a cons - the first item is a string
@@ -138,6 +108,49 @@ entity in the car, 2nd item is a list of children)"
                                                  (car where) (second where)))))))
       ;; Create an inner function to allow recursive calls with over-arching state via closure
       (cons (inner where) (reverse args)))))
+
+(defun parse-tree-from-row (tree row e-list)
+  "Parses a bunch of entities from the row using the given tree structure.
+  Connects them up with parent entities in the e-list. Returns a new e-list with
+  the new entities. Duplicates are removed (since a row is likely to contain an
+  entity which was already parse)"
+  (let ((queue `((nil (,tree)))))
+    (loop while queue for p from 0 do
+         ;; Loop over the children & try to parse
+         (let ((parent (pop queue)))
+           (loop for child in (second parent) when (not (null child)) do
+                ;; Add this child to the queue (push to back)
+                (if queue
+                    (setf (cdr (last queue)) (list child))
+                    (setf queue (list child)))
+                ;; Now try to parse this entity from the row
+                (let ((e (entity-from-row (make-instance (car child)) p row)))
+                  ;; Make sure this entity is a value (i.e. non-nil ID) and isn't
+                  ;; a duplicate
+                  (if (and
+                       (slot-value e 'id) ; Check ID non null
+                       (not (member-if    ; Check for duplicate
+                             (lambda (_e)
+                               (and
+                                ;; Make sure they're the right type
+                                (eq (type-of e) (type-of (car _e)))
+                                ;; Compare IDs - if they're the same, we found a
+                                ;; dupe
+                                (=  (slot-value e 'id)
+                                    (slot-value (car _e) 'id))))
+                             e-list)))
+                      (let ((e-node (list e ()))
+                            (parent-ix
+                             (if (car parent)
+                                 (position-if
+                                  (lambda (e)
+                                    (eq (car parent) (type-of (car e))))
+                                  e-list))))
+                        (if parent-ix
+                            (setf (second (nth parent-ix e-list))
+                                  (push e-node (second (nth parent-ix e-list)))))
+                        (push e-node e-list)))))))
+    e-list))
 
 (defun select-tree (tree &key where)
   "Selects the tree of entities, and returns a tree in the same shape with the
@@ -194,27 +207,11 @@ entity in the car, 2nd item is a list of children)"
          ;; Create empty list which will contain all the entities
          (e-list ()))
     (loop for row in rows do
-         (loop for e in visit-list for p from 0 do
-              (let ((e (entity-from-row (make-instance e) p row)))
-                ;; Make sure this entity is value (i.e. non-nil ID) and isn't a duplicate
-                (if (and
-                     (slot-value e 'id) ; Check ID non null
-                     (not (member-if ; Check for duplicate
-                           (lambda (_e)
-                             (and
-                              ;; Make sure they're the right type
-                              (eq (type-of e) (type-of (car _e)))
-                              ;; Compare IDs - if they're the same, we found a dupe
-                              (=  (slot-value e 'id)
-                                  (slot-value (car _e) 'id))))
-                           e-list)))
-                    (let ((e-node (list e ())))
-                      (add-to-parents e-list e-node)
-                      (push e-node e-list))))))
+         (setf e-list (parse-tree-from-row tree row e-list)))
     ;; Remove non-top-level entity nodes from e-list
     (remove-if-not
      (lambda (s)
-       (string-equal (string (car visit-list))
+       (string-equal (string (car tree))
                      (string (type-of (car s))))) e-list)))
 
 (defun check-owner-eq (e parent expected)
