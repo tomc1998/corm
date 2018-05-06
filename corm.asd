@@ -10,6 +10,9 @@
              delete-all
              check-owner-eq
 
+             connect
+             disconnect
+
              is-slot-bool
 
              id

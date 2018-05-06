@@ -61,12 +61,32 @@
            (sql (format nil "INSERT INTO ~a (~a_id, ~a_id) VALUES(?, ?)"
                         table-name e0-sql-name e1-sql-name)))
       sql
-      ))
-  )
+      )))
 
 (defun connect (e0 e1)
   "Connect 2 entities that are joined via a m2m relationship."
   (let ((db (get-conn))
         (sql (gen-connect-sql e0 e1)))
+    (dbi:execute (dbi:prepare db sql)
+                 (slot-value e0 'id) (slot-value e1 'id))))
+
+(defun gen-disconnect-sql (e0 e1)
+  (let* ((e0-name (type-of e0))
+         (e1-name (type-of e1))
+         (e0-sql-name (kebab-to-snake-case (string e0-name)))
+         (e1-sql-name (kebab-to-snake-case (string e1-name))))
+    (if (or (not (getf *m2m-meta* e0-name))
+            (not (getf (getf *m2m-meta* e0-name) e1-name)))
+        (error "Tried to call connect with 2 entities that are not joined in a m2m
+      relationship. Maybe have a look at func def-many-to-many?"))
+    (let* ((table-name (getf (getf *m2m-meta* e0-name) e1-name))
+           (sql (format nil "DELETE FROM ~a WHERE ~a_id = ? AND ~a_id = ?"
+                        table-name e0-sql-name e1-sql-name))) sql
+      )))
+
+(defun disconnect (e0 e1)
+  "Disconnect 2 m2m entities"
+  (let ((db (get-conn))
+        (sql (gen-disconnect-sql e0 e1)))
     (dbi:execute (dbi:prepare db sql)
                  (slot-value e0 'id) (slot-value e1 'id))))

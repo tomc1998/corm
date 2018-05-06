@@ -1,6 +1,6 @@
 (in-package :corm)
 
-(prove:plan 2)
+(prove:plan 3)
 (defentity test-insert-connect-e0 ())
 (defentity test-insert-connect-e1 ())
 (defentity test-insert-connect-e2 ())
@@ -14,7 +14,13 @@
              'string
              "INSERT INTO test_insert_connect_e0_test_insert_connect_e1 "
              "(test_insert_connect_e0_id, test_insert_connect_e1_id) "
-             "VALUES(?, ?)")))
+             "VALUES(?, ?)"))
+  (prove:is (gen-disconnect-sql e0 e1)
+            (concatenate
+             'string
+             "DELETE FROM test_insert_connect_e0_test_insert_connect_e1 "
+             "WHERE test_insert_connect_e0_id = ? AND test_insert_connect_e1_id = ?"))
+  )
 (let ((e0 (make-instance 'test-insert-connect-e0))
       (e1 (make-instance 'test-insert-connect-e2)))
   (setf (slot-value e0 'id) (insert-one e0))
