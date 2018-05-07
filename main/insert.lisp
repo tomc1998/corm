@@ -67,8 +67,13 @@
   "Connect 2 entities that are joined via a m2m relationship."
   (let ((db (get-conn))
         (sql (gen-connect-sql e0 e1)))
-    (dbi:execute (dbi:prepare db sql)
-                 (slot-value e0 'id) (slot-value e1 'id))))
+    (handler-case
+        (dbi:execute (dbi:prepare db sql)
+                     (slot-value e0 'id) (slot-value e1 'id))
+      (dbi:<dbi-database-error> (e)
+        (if (= 1062 (slot-value e 'dbi.error::error-code))
+            (error 'insert-duplicate-error)
+            (error e))))))
 
 (defun gen-disconnect-sql (e0 e1)
   (let* ((e0-name (type-of e0))
