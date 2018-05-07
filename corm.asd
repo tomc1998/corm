@@ -1,5 +1,7 @@
 (defpackage :corm (:use "COMMON-LISP")
             (:export
+             get-conn
+
              defentity
              entity-already-exists
              select-tree
