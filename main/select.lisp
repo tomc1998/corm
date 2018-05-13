@@ -99,10 +99,13 @@ in the tree, other than the root element"
                           (write-to-string (car where))
                           (inner (second where))))
                  ;; Process binary operations
-                 ((member (car where) '(= and or is like > >= < <= != sounds-like rlike - + * /))
+                 ((member (string (car where))
+                          '("=" "AND" "OR" "IS" "LIKE" ">" ">=" "<" "<=" "!="
+                            "SOUNDS-LIKE" "RLIKE" "-" "+" "*" "/")
+                          :test #'string=)
                   (format nil "(~a ~a ~a)"
                           (inner (second where))
-                          (write-to-string (car where))
+                          (format nil "~a" (car where))
                           (inner (third where))))
                  ;; Assume we're going for a 'dotted access (i.e. 'user.id')'
                  (t (progn
