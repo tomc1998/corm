@@ -14,7 +14,7 @@ update 'fields'."
           (loop for f in fields append
                (list (kebab-to-snake-case (string f))
                      (loop for e in e-list collect
-                          (slot-value e 'id))))))
+                          (to-mysql-value e 'id))))))
 
 (defun generate-update-sql (e &rest fields)
   "Generate some SQL to update the given entity's fields"
