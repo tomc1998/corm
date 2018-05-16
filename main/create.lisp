@@ -38,7 +38,7 @@
 PRIMARY KEY (~a_id, ~a_id));"
             table-name field-1 field-2 this-name other-name)))
 
-(defmacro def-many-to-many (e0 e1 &key override)
+(defun def-many-to-many (e0 e1 &key override)
   "Given two entities, e0 and e1, define a many to many relationship."
   (let* ((e0-name (kebab-to-snake-case (string e0)))
          (e1-name (kebab-to-snake-case (string e1)))
@@ -59,11 +59,10 @@ PRIMARY KEY (~a_id, ~a_id));"
         (setf (getf *m2m-meta* e1) (list e0 table-name))
         (setf (getf (getf *m2m-meta* e1) e0) table-name)
         )
-    `(progn
-       ,(if override `(dbi:execute
-                       (dbi:prepare (get-conn)
-                                    (format nil "DROP TABLE ~a" ,table-name))))
-       (dbi:execute (dbi:prepare (get-conn) ,sql)))))
+    (if override (dbi:execute
+                  (dbi:prepare (get-conn)
+                               (format nil "DROP TABLE ~a" table-name))))
+    (dbi:execute (dbi:prepare (get-conn) sql))))
 
 (defmacro defentity (name slots &key parents override)
   "Define an entity with the given name. This macro creates a class with the
@@ -137,20 +136,20 @@ PRIMARY KEY (~a_id, ~a_id));"
           (loop for s in all-slots collect
                `(,(car s) :initarg
                   ,(intern (string (car s)) :keyword)))))
-    ;; Insert into entity meta data
-    (setf (getf *entity-meta* name)
-          (make-instance 'entity-meta :fields
-                         (loop for s in all-slots collect
-                              (make-instance 'field-meta
-                                             :name (first s)
-                                             :type (second s)))))
     `(progn
-       (if ,override (dbi:execute (dbi:prepare (get-conn) (concatenate
-                                                           'string "DROP TABLE IF EXISTS "
-                                                           ,(kebab-to-snake-case (string name))))))
-       (handler-case (dbi:execute (dbi:prepare (get-conn) ,sql-def))
-         (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
-                        (error 'entity-already-exists) (error e))))
-       ;; Create class
-       (defclass ,name () ,slot-names)))
+      ;; Insert into entity meta data
+      (setf (getf *entity-meta* ',name)
+            (make-instance 'entity-meta :fields
+                           (loop for s in ',all-slots collect
+                                (make-instance 'field-meta
+                                               :name (first s)
+                                               :type (second s)))))
+      (if ,override (dbi:execute (dbi:prepare (get-conn) (concatenate
+                                                          'string "DROP TABLE IF EXISTS "
+                                                          ,(kebab-to-snake-case (string name))))))
+      (handler-case (dbi:execute (dbi:prepare (get-conn) ,sql-def))
+        (error (e) (if (= 1050 (slot-value e 'dbi.error::error-code))
+                       (error 'entity-already-exists) (error e))))
+      ;; Create class
+      (defclass ,name () ,slot-names)))
   )
